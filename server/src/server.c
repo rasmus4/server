@@ -10,7 +10,7 @@
 #include <fcntl.h>
 
 static int server_init(struct server *self) {
-    self->listenSocketFd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    self->listenSocketFd = socket(AF_INET, SOCK_STREAM, 0);
     if (self->listenSocketFd < 0) return -1;    
 
     int enable = 1;
@@ -124,7 +124,6 @@ static int server_handleClient(struct server *self, struct server_client *client
     char *receivePosition = &client->receiveBuffer[client->receiveLength];
     ssize_t recvLength = recv(client->fd, receivePosition, remainingBuffer, 0);
     if (recvLength < 0) {
-        // TODO do i need to handle EAGAIN/EWOULDBLOCK?
         server_client_DEINIT(*client);
         return -2;
     } else if (recvLength == 0) {
