@@ -120,7 +120,7 @@ static int server_handleRequest(struct server *self, struct server_client *clien
                 memcmp(self->fileResponses[i].url, urlStart, urlLength) == 0
             ) {
                 send(client->fd, self->fileResponses[i].response, self->fileResponses[i].responseLength, 0);
-                break;
+                goto foundResponse;
             }
         }
     }
