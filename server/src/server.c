@@ -9,7 +9,10 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
-static int server_init(struct server *self) {
+static int server_init(struct server *self, struct fileResponse *fileResponses, int fileResponsesLength) {
+    self->fileResponses = fileResponses;
+    self->fileResponsesLength = fileResponsesLength;
+
     self->listenSocketFd = socket(AF_INET, SOCK_STREAM, 0);
     if (self->listenSocketFd < 0) return -1;    
 
@@ -41,7 +44,7 @@ static int server_init(struct server *self) {
     ) return -6;
 
     for (int i = 0; i < server_MAX_CLIENTS; ++i) {
-        server_client_INIT_INVALID(self->clients[i]);
+        server_client_init_invalid(&self->clients[i]);
     }
 
     return 0;
@@ -67,7 +70,7 @@ static int server_acceptSocket(struct server *self) {
 
             if (epoll_ctl(self->epollFd, EPOLL_CTL_ADD, newSocketFd, &newSocketEvent) < 0) goto cleanup1;
 
-            server_client_INIT(self->clients[i], newSocketFd);
+            server_client_init(&self->clients[i], newSocketFd);
             return 0;
         }
     }
@@ -91,8 +94,8 @@ static int server_findLineEnd(char *buffer, int index, int end) {
 static int server_handleRequest(struct server *self, struct server_client *client) {
     int lineEnd = server_findLineEnd(client->receiveBuffer, 0, client->receiveLength);
     if (lineEnd < 0) return 1;
-
-    bool isChess = (lineEnd >= 10 && memcmp(client->receiveBuffer, "GET /chess", 10) == 0);
+#define server_GET_SLASH_LEN 5
+    bool isGet = (lineEnd >= server_GET_SLASH_LEN && memcmp(client->receiveBuffer, "GET /", server_GET_SLASH_LEN) == 0);
 
     int currentLine = lineEnd;
     for (;;) {
@@ -103,31 +106,46 @@ static int server_handleRequest(struct server *self, struct server_client *clien
         if (lineLength == 0) break;
     }
 
-    if (isChess) {
-        char *response = "HTTP/1.1 404 Not Found\r\nContent-Length:0\r\n\r\n";
-        send(client->fd, response, 44, 0);
-    } else {
-        char *response = "HTTP/1.1 404 Not Found\r\nContent-Length:0\r\n\r\n";
-        send(client->fd, response, 44, 0);
+    if (isGet) {
+        char *urlStart = &client->receiveBuffer[server_GET_SLASH_LEN];
+        int urlLength = 0;
+        for (;;) {
+            if (urlLength >= (lineEnd - server_GET_SLASH_LEN)) break;
+            if (urlStart[urlLength] == ' ') break;
+            ++urlLength;
+        }
+        for (int i = 0; i < self->fileResponsesLength; ++i) {
+            if (
+                self->fileResponses[i].urlLength == urlLength &&
+                memcmp(self->fileResponses[i].url, urlStart, urlLength) == 0
+            ) {
+                send(client->fd, self->fileResponses[i].response, self->fileResponses[i].responseLength, 0);
+                break;
+            }
+        }
     }
-    server_client_DEINIT(*client);
+    char *response = "HTTP/1.1 404 Not Found\r\nContent-Length:0\r\n\r\n";
+    send(client->fd, response, 44, 0);
+    foundResponse:
+
+    server_client_deinit(client);
     return 0;
 }
 
 static int server_handleClient(struct server *self, struct server_client *client) {
     int remainingBuffer = server_RECEIVE_BUFFER_SIZE - client->receiveLength;
     if (remainingBuffer <= 0) {
-        server_client_DEINIT(*client);
+        server_client_deinit(client);
         return -1;
     }
 
     char *receivePosition = &client->receiveBuffer[client->receiveLength];
     ssize_t recvLength = recv(client->fd, receivePosition, remainingBuffer, 0);
     if (recvLength < 0) {
-        server_client_DEINIT(*client);
+        server_client_deinit(client);
         return -2;
     } else if (recvLength == 0) {
-        server_client_DEINIT(*client);
+        server_client_deinit(client);
         return 1;
     } else {
         client->receiveLength += recvLength;
