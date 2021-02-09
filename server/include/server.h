@@ -3,6 +3,7 @@
 
 #include <sys/epoll.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #define server_RECEIVE_BUFFER_SIZE 1024
 #define server_MAX_EPOLL_EVENTS 64
@@ -12,6 +13,7 @@ struct server_client {
     int fd;
     char receiveBuffer[server_RECEIVE_BUFFER_SIZE];
     int receiveLength;
+    bool isWebsocket;
 };
 
 static inline void server_client_init_invalid(struct server_client *self) {
@@ -21,6 +23,7 @@ static inline void server_client_init_invalid(struct server_client *self) {
 static inline void server_client_init(struct server_client *self, int fd) {
     self->fd = fd;
     self->receiveLength = 0;
+    self->isWebsocket = false;
 }
 static inline void server_client_deinit(struct server_client *self) {
     if (self->fd >= 0) {

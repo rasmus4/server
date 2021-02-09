@@ -1,4 +1,6 @@
 #include "server.h"
+#include "base64.h"
+#include "sha1.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -91,19 +93,44 @@ static int server_findLineEnd(char *buffer, int index, int end) {
     return -1;
 }
 
+static int server_handleWebsocket(struct server *self, struct server_client *client) {
+    return 0;
+}
+
 static int server_handleRequest(struct server *self, struct server_client *client) {
+    if (client->isWebsocket) {
+        if (server_handleWebsocket(self, client) < 0) return -1;
+        return 0;
+    }
+
     int lineEnd = server_findLineEnd(client->receiveBuffer, 0, client->receiveLength);
     if (lineEnd < 0) return 1;
 #define server_GET_SLASH_LEN 5
     bool isGet = (lineEnd >= server_GET_SLASH_LEN && memcmp(client->receiveBuffer, "GET /", server_GET_SLASH_LEN) == 0);
+    int websocketKeyStart = 0;
+    int websocketKeyLength;
 
-    int currentLine = lineEnd;
+    int currentLine = lineEnd + 2;
     for (;;) {
         int lineEnd = server_findLineEnd(client->receiveBuffer, currentLine, client->receiveLength);
         if (lineEnd < 0) return 1;
 
         int lineLength = lineEnd - currentLine;
         if (lineLength == 0) break;
+
+        if (lineLength > 18 && memcmp(&client->receiveBuffer[currentLine], "Sec-WebSocket-Key:", 18) == 0) {
+            int i = currentLine + 18;
+            for (; i < currentLine + lineLength; ++i) {
+                if (websocketKeyStart == 0) {
+                    if (client->receiveBuffer[i] != ' ') websocketKeyStart = i;
+                } else {
+                    if (client->receiveBuffer[i] == ' ') break;
+                }
+            }
+            websocketKeyLength = i - websocketKeyStart;
+            if (websocketKeyLength != 24) websocketKeyStart = 0;
+        }
+        currentLine = lineEnd + 2;
     }
 
     if (isGet) {
@@ -114,20 +141,40 @@ static int server_handleRequest(struct server *self, struct server_client *clien
             if (urlStart[urlLength] == ' ') break;
             ++urlLength;
         }
-        for (int i = 0; i < self->fileResponsesLength; ++i) {
-            if (
-                self->fileResponses[i].urlLength == urlLength &&
-                memcmp(self->fileResponses[i].url, urlStart, urlLength) == 0
-            ) {
-                send(client->fd, self->fileResponses[i].response, self->fileResponses[i].responseLength, 0);
-                goto foundResponse;
+
+        if (websocketKeyStart != 0) {
+            char buffer[128];
+            memcpy(&buffer, &client->receiveBuffer[websocketKeyStart], 24);
+            memcpy(&buffer[24], "258EAFA5-E914-47DA-95CA-C5AB0DC85B11", 36);
+
+            char hashResult[SHA1HashSize];
+            SHA1Context sha1Context;
+            SHA1Reset(&sha1Context);
+            SHA1Input(&sha1Context, buffer, 24 + 36);
+            SHA1Result(&sha1Context, hashResult);
+
+            size_t base64Len;
+            char *base64Encoded = base64_encode(hashResult, SHA1HashSize, &base64Len);
+            if (base64Encoded == NULL) goto handledRequest;
+            // TODO
+            printf("Full Response: %.*s\n", (int)base64Len, base64Encoded);
+            goto handledRequest;
+        } else {
+            for (int i = 0; i < self->fileResponsesLength; ++i) {
+                if (
+                    self->fileResponses[i].urlLength == urlLength &&
+                    memcmp(self->fileResponses[i].url, urlStart, urlLength) == 0
+                ) {
+                    send(client->fd, self->fileResponses[i].response, self->fileResponses[i].responseLength, 0);
+                    goto handledRequest;
+                }
             }
         }
     }
     char *response = "HTTP/1.1 404 Not Found\r\nContent-Length:0\r\n\r\n";
     send(client->fd, response, 44, 0);
-    foundResponse:
 
+    handledRequest:
     server_client_deinit(client);
     return 0;
 }
