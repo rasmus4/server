@@ -178,9 +178,9 @@ static int server_handleWebsocket(struct server *self, struct server_client *cli
         );
         maskingKeyIndex = 10;
     } else maskingKeyIndex = 2;
-    if (client->receiveLength - (maskingKeyIndex + 4) < payloadLen) return 1;
-
     int payloadStart = maskingKeyIndex + 4;
+    if (client->receiveLength - payloadStart < payloadLen) return 1;
+
     for (int i = 0; i < payloadLen; ++i) {
         client->receiveBuffer[payloadStart + i] ^= client->receiveBuffer[maskingKeyIndex + (i % 4)];
     }
