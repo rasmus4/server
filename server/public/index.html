@@ -3,7 +3,8 @@
         <script>
             const socket = new WebSocket("ws://" + location.host + "/chess");
             socket.addEventListener("open", function (event) {
-                socket.send("Hello!");
+                console.log("hello!");
+                socket.send("hello");
             });
 
             socket.addEventListener('message', function (event) {

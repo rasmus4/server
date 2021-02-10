@@ -11,6 +11,13 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
+#define server_WEBSOCKET_ACCEPT_START \
+    "HTTP/1.1 101 Switching Protocols\r\n" \
+    "Upgrade: websocket\r\n" \
+    "Connection: Upgrade\r\n" \
+    "Sec-WebSocket-Accept: "
+#define server_WEBSOCKET_ACCEPT_START_LEN (34 + 20 + 21 + 22)
+
 static int server_init(struct server *self, struct fileResponse *fileResponses, int fileResponsesLength) {
     self->fileResponses = fileResponses;
     self->fileResponsesLength = fileResponsesLength;
@@ -94,6 +101,7 @@ static int server_findLineEnd(char *buffer, int index, int end) {
 }
 
 static int server_handleWebsocket(struct server *self, struct server_client *client) {
+    printf("Got websocket packet!!\n");
     return 0;
 }
 
@@ -143,22 +151,28 @@ static int server_handleRequest(struct server *self, struct server_client *clien
         }
 
         if (websocketKeyStart != 0) {
-            char buffer[128];
-            memcpy(&buffer, &client->receiveBuffer[websocketKeyStart], 24);
-            memcpy(&buffer[24], "258EAFA5-E914-47DA-95CA-C5AB0DC85B11", 36);
+            memcpy(self->scratchSpace, &client->receiveBuffer[websocketKeyStart], 24);
+            memcpy(&self->scratchSpace[24], "258EAFA5-E914-47DA-95CA-C5AB0DC85B11", 36);
 
-            char hashResult[SHA1HashSize];
             SHA1Context sha1Context;
             SHA1Reset(&sha1Context);
-            SHA1Input(&sha1Context, buffer, 24 + 36);
-            SHA1Result(&sha1Context, hashResult);
+            SHA1Input(&sha1Context, self->scratchSpace, 24 + 36);
+            SHA1Result(&sha1Context, &self->scratchSpace[512]);
 
             size_t base64Len;
-            char *base64Encoded = base64_encode(hashResult, SHA1HashSize, &base64Len);
+            char *base64Encoded = base64_encode(&self->scratchSpace[512], SHA1HashSize, &base64Len);
             if (base64Encoded == NULL) goto handledRequest;
-            // TODO
-            printf("Full Response: %.*s\n", (int)base64Len, base64Encoded);
-            goto handledRequest;
+            
+            memcpy(self->scratchSpace, server_WEBSOCKET_ACCEPT_START, server_WEBSOCKET_ACCEPT_START_LEN);
+            memcpy(&self->scratchSpace[server_WEBSOCKET_ACCEPT_START_LEN], base64Encoded, server_WEBSOCKET_ACCEPT_START_LEN);
+            memcpy(&self->scratchSpace[server_WEBSOCKET_ACCEPT_START_LEN + base64Len], "\r\n\r\n", 4);
+
+            printf("Full Response: %.*s", (int)(server_WEBSOCKET_ACCEPT_START_LEN + base64Len + 4), self->scratchSpace);
+            client->isWebsocket = true;
+            client->receiveLength = 0;
+            int len = server_WEBSOCKET_ACCEPT_START_LEN + base64Len + 4;
+            if (send(client->fd, self->scratchSpace, len, 0) != len) goto handledRequest;
+            return 0;
         } else {
             for (int i = 0; i < self->fileResponsesLength; ++i) {
                 if (

@@ -39,6 +39,7 @@ struct server {
     struct server_client clients[server_MAX_CLIENTS];
     struct fileResponse *fileResponses;
     int fileResponsesLength;
+    char scratchSpace[1024];
 };
 
 static int server_init(struct server *self, struct fileResponse *fileResponses, int fileResponsesLength);
