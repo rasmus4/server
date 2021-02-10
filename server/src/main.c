@@ -107,13 +107,14 @@ int load_responses(void) {
     return 0;
 }
 
+struct server server;
+
 int main(int argc, char **argv) {
     if (load_responses() < 0) {
         printf("load_responses failed\n");
         return 1;
     }
 
-    struct server server;
     int status = server_init(&server, responses, responsesLength);
     if (status < 0) {
         printf("server_init failed (%d)\n", status);

@@ -18,6 +18,30 @@
     "Sec-WebSocket-Accept: "
 #define server_WEBSOCKET_ACCEPT_START_LEN (34 + 20 + 21 + 22)
 
+static inline void server_client_init_invalid(struct server_client *self) {
+    self->fd = -1;
+}
+
+static inline void server_client_init(struct server_client *self, int fd) {
+    self->fd = fd;
+    self->receiveLength = 0;
+    self->isWebsocket = false;
+}
+static inline void server_client_deinit(struct server_client *self) {
+    if (self->fd >= 0) {
+        close(self->fd);
+        self->fd = -1;
+    }
+}
+
+static inline void server_client_setIsWebsocket(struct server_client *self) {
+    self->isWebsocket = true;
+}
+
+static inline void server_client_setReceiveLength(struct server_client *self, int receiveLength) {
+    self->receiveLength = receiveLength;
+}
+
 static int server_init(struct server *self, struct fileResponse *fileResponses, int fileResponsesLength) {
     self->fileResponses = fileResponses;
     self->fileResponsesLength = fileResponsesLength;
@@ -100,16 +124,88 @@ static int server_findLineEnd(char *buffer, int index, int end) {
     return -1;
 }
 
+static int server_sendWebsocket(struct server *self, struct server_client *client, char *message, int messageLength) {
+    if (messageLength >= 1000) return -1;
+    // TODO opcode?
+    self->scratchSpace[0] = 0x80 | 0x01;
+    int payloadIndex;
+    if (messageLength < 126) {
+        self->scratchSpace[1] = messageLength;
+        payloadIndex = 2;
+    } else {
+        self->scratchSpace[1] = 126;
+        self->scratchSpace[2] = messageLength >> 8;
+        self->scratchSpace[3] = messageLength & 0xFF;
+        payloadIndex = 4;
+    }
+    memcpy(&self->scratchSpace[payloadIndex], message, messageLength);
+
+    int totalLen = payloadIndex + messageLength;
+    if (send(client->fd, self->scratchSpace, totalLen, 0) != totalLen) return -1;
+    
+    return 0;
+}
+
 static int server_handleWebsocket(struct server *self, struct server_client *client) {
-    printf("Got websocket packet!!\n");
+    if (client->receiveLength < 2) return 1; // No space for even the payload length.
+    bool fin = client->receiveBuffer[0] & 0x80;
+    if (!fin) return -1; // TODO support fragmentation.
+
+    int opcode = client->receiveBuffer[0] & 0x0F;
+    bool masking = client->receiveBuffer[1] & 0x80;
+    if (!masking) return -1;
+
+    long long payloadLen = client->receiveBuffer[1] & 0x7F;
+    int maskingKeyIndex;
+    if (payloadLen == 126) {
+        if (client->receiveLength < 4) return 1;
+        payloadLen = (
+            ((unsigned long long)((unsigned char)client->receiveBuffer[2]) << 8) |
+            ((unsigned long long)(unsigned char)client->receiveBuffer[3])
+        );
+        maskingKeyIndex = 4;
+    } else if (payloadLen == 127) {
+        if (client->receiveLength < 10) return 1;
+        payloadLen = (
+            ((unsigned long long)((unsigned char)client->receiveBuffer[2]) << 54) |
+            ((unsigned long long)((unsigned char)client->receiveBuffer[3]) << 48) |
+            ((unsigned long long)((unsigned char)client->receiveBuffer[4]) << 40) |
+            ((unsigned long long)((unsigned char)client->receiveBuffer[5]) << 32) |
+            ((unsigned long long)((unsigned char)client->receiveBuffer[6]) << 24) |
+            ((unsigned long long)((unsigned char)client->receiveBuffer[7]) << 16) |
+            ((unsigned long long)((unsigned char)client->receiveBuffer[8]) << 8) |
+            ((unsigned long long)((unsigned char)client->receiveBuffer[9]))
+        );
+        maskingKeyIndex = 10;
+    } else maskingKeyIndex = 2;
+    if (client->receiveLength - (maskingKeyIndex + 4) < payloadLen) return 1;
+
+    int payloadStart = maskingKeyIndex + 4;
+    for (int i = 0; i < payloadLen; ++i) {
+        client->receiveBuffer[payloadStart + i] ^= client->receiveBuffer[maskingKeyIndex + (i % 4)];
+    }
+
+    if (opcode == 0x8) {
+        // TODO should probably send a close frame.
+        server_client_deinit(client);
+        return 0;
+    }
+    printf("Got websocket packet!! %.*s\n", (int)payloadLen, &client->receiveBuffer[payloadStart]);
+    server_sendWebsocket(self, client, &client->receiveBuffer[payloadStart], (int)payloadLen);
+    server_client_setReceiveLength(client, 0);
     return 0;
 }
 
 static int server_handleRequest(struct server *self, struct server_client *client) {
     if (client->isWebsocket) {
-        if (server_handleWebsocket(self, client) < 0) return -1;
+        if (server_handleWebsocket(self, client) < 0) {
+            server_client_deinit(client);
+            return -1;
+        }
+        
         return 0;
     }
+    printf("Got: %.*s\n", client->receiveLength, client->receiveBuffer);
 
     int lineEnd = server_findLineEnd(client->receiveBuffer, 0, client->receiveLength);
     if (lineEnd < 0) return 1;
@@ -168,10 +264,14 @@ static int server_handleRequest(struct server *self, struct server_client *clien
             memcpy(&self->scratchSpace[server_WEBSOCKET_ACCEPT_START_LEN + base64Len], "\r\n\r\n", 4);
 
             printf("Full Response: %.*s", (int)(server_WEBSOCKET_ACCEPT_START_LEN + base64Len + 4), self->scratchSpace);
-            client->isWebsocket = true;
-            client->receiveLength = 0;
+            server_client_setIsWebsocket(client);
+            server_client_setReceiveLength(client, 0);
+
             int len = server_WEBSOCKET_ACCEPT_START_LEN + base64Len + 4;
-            if (send(client->fd, self->scratchSpace, len, 0) != len) goto handledRequest;
+            if (send(client->fd, self->scratchSpace, len, 0) != len) {
+                server_client_deinit(client);
+                return -2;
+            }
             return 0;
         } else {
             for (int i = 0; i < self->fileResponsesLength; ++i) {
@@ -210,8 +310,9 @@ static int server_handleClient(struct server *self, struct server_client *client
         return 1;
     } else {
         client->receiveLength += recvLength;
-        printf("Got: %.*s\n", client->receiveLength, client->receiveBuffer);
-        int status = server_handleRequest(self, client);
+        if (server_handleRequest(self, client) < 0) {
+            return -3;   
+        }
     }
     return 0;
 }

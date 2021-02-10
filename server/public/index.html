@@ -3,16 +3,15 @@
         <script>
             const socket = new WebSocket("ws://" + location.host + "/chess");
             socket.addEventListener("open", function (event) {
-                console.log("hello!");
-                socket.send("hello");
+                socket.send("Hello world!");
             });
 
-            socket.addEventListener('message', function (event) {
-                console.log('Message from server ', event.data);
+            socket.addEventListener("message", function (event) {
+                document.getElementById("test").innerHTML = event.data;
             });
         </script>
     </head>
     <body>
-        <p>Hello world!</p>
+        <span id="test"></span>
     </body>
 </html>

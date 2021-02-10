@@ -35,7 +35,6 @@ unsigned char * base64_encode(const unsigned char *src, size_t len,
 	int line_len;
 
 	olen = len * 4 / 3 + 4; /* 3-byte blocks to 4-byte */
-	olen += olen / 72; /* line feeds */
 	olen++; /* nul termination */
 	if (olen < len)
 		return NULL; /* integer overflow */
@@ -54,10 +53,6 @@ unsigned char * base64_encode(const unsigned char *src, size_t len,
 		*pos++ = base64_table[in[2] & 0x3f];
 		in += 3;
 		line_len += 4;
-		if (line_len >= 72) {
-			*pos++ = '\n';
-			line_len = 0;
-		}
 	}
 
 	if (end - in) {
@@ -73,9 +68,6 @@ unsigned char * base64_encode(const unsigned char *src, size_t len,
 		*pos++ = '=';
 		line_len += 4;
 	}
-
-	if (line_len)
-		*pos++ = '\n';
 
 	*pos = '\0';
 	if (out_len)
