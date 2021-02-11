@@ -1,1 +1,1 @@
-gcc -o server -Iinclude server.c
+gcc -fsanitize=undefined -Wpedantic -Wall -o server -Iinclude server.c

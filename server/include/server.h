@@ -11,8 +11,8 @@
 
 struct server_client {
     int fd;
-    char receiveBuffer[server_RECEIVE_BUFFER_SIZE];
-    int receiveLength;
+    uint8_t receiveBuffer[server_RECEIVE_BUFFER_SIZE];
+    int32_t receiveLength;
     bool isWebsocket;
 };
 
@@ -22,10 +22,10 @@ struct server {
     struct epoll_event epollEvents[server_MAX_EPOLL_EVENTS];
     struct server_client clients[server_MAX_CLIENTS];
     struct fileResponse *fileResponses;
-    int fileResponsesLength;
-    char scratchSpace[1024];
+    int32_t fileResponsesLength;
+    uint8_t scratchSpace[1024];
 };
 
-static int server_init(struct server *self, struct fileResponse *fileResponses, int fileResponsesLength);
+static int server_init(struct server *self, struct fileResponse *fileResponses, int32_t fileResponsesLength);
 #define server_DEINIT(SELF)
 static int server_run(struct server *self);

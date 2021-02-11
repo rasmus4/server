@@ -76,7 +76,7 @@ static int server_init(struct server *self, struct fileResponse *fileResponses, 
         ) < 0
     ) return -6;
 
-    for (int i = 0; i < server_MAX_CLIENTS; ++i) {
+    for (int32_t i = 0; i < server_MAX_CLIENTS; ++i) {
         server_client_init_invalid(&self->clients[i]);
     }
 
@@ -84,8 +84,6 @@ static int server_init(struct server *self, struct fileResponse *fileResponses, 
 }
 
 static int server_acceptSocket(struct server *self) {
-    int status = 0;
-
     int newSocketFd = accept(self->listenSocketFd, NULL, NULL);
     if (newSocketFd < 0) goto cleanup0;
 
@@ -117,18 +115,18 @@ static int server_acceptSocket(struct server *self) {
     return -1;
 }
 
-static int server_findLineEnd(char *buffer, int index, int end) {
+static int32_t server_findLineEnd(uint8_t *buffer, int32_t index, int32_t end) {
     for (; index + 1 < end; ++index) {
         if (buffer[index] == '\r' && buffer[index + 1] == '\n') return index;
     }
     return -1;
 }
 
-static int server_sendWebsocket(struct server *self, struct server_client *client, char *message, int messageLength) {
+static int server_sendWebsocket(struct server *self, struct server_client *client, uint8_t *message, int32_t messageLength) {
     if (messageLength >= 1000) return -1;
     // TODO opcode?
     self->scratchSpace[0] = 0x80 | 0x01;
-    int payloadIndex;
+    int32_t payloadIndex;
     if (messageLength < 126) {
         self->scratchSpace[1] = messageLength;
         payloadIndex = 2;
@@ -140,7 +138,7 @@ static int server_sendWebsocket(struct server *self, struct server_client *clien
     }
     memcpy(&self->scratchSpace[payloadIndex], message, messageLength);
 
-    int totalLen = payloadIndex + messageLength;
+    int32_t totalLen = payloadIndex + messageLength;
     if (send(client->fd, self->scratchSpace, totalLen, 0) != totalLen) return -1;
     
     return 0;
@@ -155,33 +153,33 @@ static int server_handleWebsocket(struct server *self, struct server_client *cli
     bool masking = client->receiveBuffer[1] & 0x80;
     if (!masking) return -1;
 
-    long long payloadLen = client->receiveBuffer[1] & 0x7F;
-    int maskingKeyIndex;
+    uint64_t payloadLen = client->receiveBuffer[1] & 0x7F;
+    int32_t maskingKeyIndex;
     if (payloadLen == 126) {
         if (client->receiveLength < 4) return 1;
         payloadLen = (
-            ((unsigned long long)((unsigned char)client->receiveBuffer[2]) << 8) |
-            ((unsigned long long)(unsigned char)client->receiveBuffer[3])
+            ((uint64_t)client->receiveBuffer[2] << 8) |
+            ((uint64_t)client->receiveBuffer[3])
         );
         maskingKeyIndex = 4;
     } else if (payloadLen == 127) {
         if (client->receiveLength < 10) return 1;
         payloadLen = (
-            ((unsigned long long)((unsigned char)client->receiveBuffer[2]) << 54) |
-            ((unsigned long long)((unsigned char)client->receiveBuffer[3]) << 48) |
-            ((unsigned long long)((unsigned char)client->receiveBuffer[4]) << 40) |
-            ((unsigned long long)((unsigned char)client->receiveBuffer[5]) << 32) |
-            ((unsigned long long)((unsigned char)client->receiveBuffer[6]) << 24) |
-            ((unsigned long long)((unsigned char)client->receiveBuffer[7]) << 16) |
-            ((unsigned long long)((unsigned char)client->receiveBuffer[8]) << 8) |
-            ((unsigned long long)((unsigned char)client->receiveBuffer[9]))
+            ((uint64_t)client->receiveBuffer[2] << 54) |
+            ((uint64_t)client->receiveBuffer[3] << 48) |
+            ((uint64_t)client->receiveBuffer[4] << 40) |
+            ((uint64_t)client->receiveBuffer[5] << 32) |
+            ((uint64_t)client->receiveBuffer[6] << 24) |
+            ((uint64_t)client->receiveBuffer[7] << 16) |
+            ((uint64_t)client->receiveBuffer[8] << 8) |
+            ((uint64_t)client->receiveBuffer[9])
         );
         maskingKeyIndex = 10;
     } else maskingKeyIndex = 2;
-    int payloadStart = maskingKeyIndex + 4;
+    int32_t payloadStart = maskingKeyIndex + 4;
     if (client->receiveLength - payloadStart < payloadLen) return 1;
 
-    for (int i = 0; i < payloadLen; ++i) {
+    for (int32_t i = 0; i < payloadLen; ++i) {
         client->receiveBuffer[payloadStart + i] ^= client->receiveBuffer[maskingKeyIndex + (i % 4)];
     }
 
@@ -207,23 +205,23 @@ static int server_handleRequest(struct server *self, struct server_client *clien
     }
     printf("Got: %.*s\n", client->receiveLength, client->receiveBuffer);
 
-    int lineEnd = server_findLineEnd(client->receiveBuffer, 0, client->receiveLength);
+    int32_t lineEnd = server_findLineEnd(client->receiveBuffer, 0, client->receiveLength);
     if (lineEnd < 0) return 1;
 #define server_GET_SLASH_LEN 5
     bool isGet = (lineEnd >= server_GET_SLASH_LEN && memcmp(client->receiveBuffer, "GET /", server_GET_SLASH_LEN) == 0);
-    int websocketKeyStart = 0;
-    int websocketKeyLength;
+    int32_t websocketKeyStart = 0;
+    int32_t websocketKeyLength;
 
-    int currentLine = lineEnd + 2;
+    int32_t currentLine = lineEnd + 2;
     for (;;) {
-        int lineEnd = server_findLineEnd(client->receiveBuffer, currentLine, client->receiveLength);
+        int32_t lineEnd = server_findLineEnd(client->receiveBuffer, currentLine, client->receiveLength);
         if (lineEnd < 0) return 1;
 
-        int lineLength = lineEnd - currentLine;
+        int32_t lineLength = lineEnd - currentLine;
         if (lineLength == 0) break;
 
         if (lineLength > 18 && memcmp(&client->receiveBuffer[currentLine], "Sec-WebSocket-Key:", 18) == 0) {
-            int i = currentLine + 18;
+            int32_t i = currentLine + 18;
             for (; i < currentLine + lineLength; ++i) {
                 if (websocketKeyStart == 0) {
                     if (client->receiveBuffer[i] != ' ') websocketKeyStart = i;
@@ -238,8 +236,8 @@ static int server_handleRequest(struct server *self, struct server_client *clien
     }
 
     if (isGet) {
-        char *urlStart = &client->receiveBuffer[server_GET_SLASH_LEN];
-        int urlLength = 0;
+        uint8_t *urlStart = &client->receiveBuffer[server_GET_SLASH_LEN];
+        int32_t urlLength = 0;
         for (;;) {
             if (urlLength >= (lineEnd - server_GET_SLASH_LEN)) break;
             if (urlStart[urlLength] == ' ') break;
@@ -256,7 +254,7 @@ static int server_handleRequest(struct server *self, struct server_client *clien
             SHA1Result(&sha1Context, &self->scratchSpace[512]);
 
             size_t base64Len;
-            char *base64Encoded = base64_encode(&self->scratchSpace[512], SHA1HashSize, &base64Len);
+            uint8_t *base64Encoded = base64_encode(&self->scratchSpace[512], SHA1HashSize, &base64Len);
             if (base64Encoded == NULL) goto handledRequest;
             
             memcpy(self->scratchSpace, server_WEBSOCKET_ACCEPT_START, server_WEBSOCKET_ACCEPT_START_LEN);
@@ -267,14 +265,14 @@ static int server_handleRequest(struct server *self, struct server_client *clien
             server_client_setIsWebsocket(client);
             server_client_setReceiveLength(client, 0);
 
-            int len = server_WEBSOCKET_ACCEPT_START_LEN + base64Len + 4;
+            int32_t len = server_WEBSOCKET_ACCEPT_START_LEN + base64Len + 4;
             if (send(client->fd, self->scratchSpace, len, 0) != len) {
                 server_client_deinit(client);
                 return -2;
             }
             return 0;
         } else {
-            for (int i = 0; i < self->fileResponsesLength; ++i) {
+            for (int32_t i = 0; i < self->fileResponsesLength; ++i) {
                 if (
                     self->fileResponses[i].urlLength == urlLength &&
                     memcmp(self->fileResponses[i].url, urlStart, urlLength) == 0
@@ -285,7 +283,7 @@ static int server_handleRequest(struct server *self, struct server_client *clien
             }
         }
     }
-    char *response = "HTTP/1.1 404 Not Found\r\nContent-Length:0\r\n\r\n";
+    uint8_t *response = (uint8_t *)"HTTP/1.1 404 Not Found\r\nContent-Length:0\r\n\r\n";
     send(client->fd, response, 44, 0);
 
     handledRequest:
@@ -294,13 +292,13 @@ static int server_handleRequest(struct server *self, struct server_client *clien
 }
 
 static int server_handleClient(struct server *self, struct server_client *client) {
-    int remainingBuffer = server_RECEIVE_BUFFER_SIZE - client->receiveLength;
+    int32_t remainingBuffer = server_RECEIVE_BUFFER_SIZE - client->receiveLength;
     if (remainingBuffer <= 0) {
         server_client_deinit(client);
         return -1;
     }
 
-    char *receivePosition = &client->receiveBuffer[client->receiveLength];
+    uint8_t *receivePosition = &client->receiveBuffer[client->receiveLength];
     ssize_t recvLength = recv(client->fd, receivePosition, remainingBuffer, 0);
     if (recvLength < 0) {
         server_client_deinit(client);
@@ -320,7 +318,7 @@ static int server_handleClient(struct server *self, struct server_client *client
 static int server_run(struct server *self) {
     for (;;) {
         int numEvents = epoll_wait(self->epollFd, self->epollEvents, server_MAX_EPOLL_EVENTS, -1);
-        for (int i = 0; i < numEvents; ++i) {
+        for (int32_t i = 0; i < numEvents; ++i) {
             int eventFd = *((int *)self->epollEvents[i].data.ptr);
             if (eventFd == self->listenSocketFd) {
                 int status = server_acceptSocket(self);

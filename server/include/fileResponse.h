@@ -1,18 +1,20 @@
 #pragma once
 
+#include <stdint.h>
+
 struct fileResponse {
-    char *url;
-    int urlLength;
-    char *response;
-    int responseLength;
+    uint8_t *url;
+    int32_t urlLength;
+    uint8_t *response;
+    int32_t responseLength;
 };
 
 static inline void fileResponse_init(
     struct fileResponse *self,
-    char *url,
-    int urlLength,
-    char *response,
-    int responseLength
+    uint8_t *url,
+    int32_t urlLength,
+    uint8_t *response,
+    int32_t responseLength
 ) {
     self->url = url;
     self->urlLength = urlLength;
