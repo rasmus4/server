@@ -109,13 +109,37 @@ int load_responses(void) {
 
 struct server server;
 
+int onConnect(void *data, struct server_client *client) {
+    printf("onConnect\n");
+    return 0;
+}
+
+int onDisconnect(void *data, struct server_client *client) {
+    printf("onDisconnect\n");
+    return 0;
+}
+
+int onMessage(void *data, struct server_client *client, uint8_t *message, int32_t messageLength, bool isText) {
+    printf("Got websocket packet!! %.*s\n", (int)messageLength, message);
+    return server_sendWebsocketMessage(&server, client, message, messageLength, isText);
+}
+
 int main(int argc, char **argv) {
     if (load_responses() < 0) {
         printf("load_responses failed\n");
         return 1;
     }
 
-    int status = server_init(&server, responses, responsesLength);
+    struct server_callbacks callbacks;
+    server_callbacks_init(
+        &callbacks,
+        NULL,
+        onConnect,
+        onDisconnect,
+        onMessage
+    );
+
+    int status = server_init(&server, responses, responsesLength, callbacks);
     if (status < 0) {
         printf("server_init failed (%d)\n", status);
         return 1;
@@ -127,5 +151,6 @@ int main(int argc, char **argv) {
         printf("server_run failed (%d)\n", status);
         return 1;
     }
+    server_callbacks_deinit(&callbacks);
     return 0;
 }

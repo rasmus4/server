@@ -11,6 +11,9 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
+#include "server_client.c"
+#include "server_callbacks.c"
+
 #define server_WEBSOCKET_ACCEPT_START \
     "HTTP/1.1 101 Switching Protocols\r\n" \
     "Upgrade: websocket\r\n" \
@@ -18,36 +21,18 @@
     "Sec-WebSocket-Accept: "
 #define server_WEBSOCKET_ACCEPT_START_LEN (34 + 20 + 21 + 22)
 
-static inline void server_client_init_invalid(struct server_client *self) {
-    self->fd = -1;
-}
-
-static inline void server_client_init(struct server_client *self, int fd) {
-    self->fd = fd;
-    self->receiveLength = 0;
-    self->isWebsocket = false;
-}
-static inline void server_client_deinit(struct server_client *self) {
-    if (self->fd >= 0) {
-        close(self->fd);
-        self->fd = -1;
-    }
-}
-
-static inline void server_client_setIsWebsocket(struct server_client *self) {
-    self->isWebsocket = true;
-}
-
-static inline void server_client_setReceiveLength(struct server_client *self, int receiveLength) {
-    self->receiveLength = receiveLength;
-}
-
-static int server_init(struct server *self, struct fileResponse *fileResponses, int fileResponsesLength) {
+static int server_init(
+    struct server *self,
+    struct fileResponse *fileResponses,
+    int fileResponsesLength,
+    struct server_callbacks callbacks
+) {
     self->fileResponses = fileResponses;
     self->fileResponsesLength = fileResponsesLength;
+    self->callbacks = callbacks;
 
     self->listenSocketFd = socket(AF_INET, SOCK_STREAM, 0);
-    if (self->listenSocketFd < 0) return -1;    
+    if (self->listenSocketFd < 0) return -1;
 
     int enable = 1;
     if (setsockopt(self->listenSocketFd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable)) < 0) return -2;
@@ -77,10 +62,16 @@ static int server_init(struct server *self, struct fileResponse *fileResponses, 
     ) return -6;
 
     for (int32_t i = 0; i < server_MAX_CLIENTS; ++i) {
-        server_client_init_invalid(&self->clients[i]);
+        server_client_init(&self->clients[i]);
     }
 
     return 0;
+}
+
+static inline void server_deinit(struct server *self) {
+    for (int32_t i = 0; i < server_MAX_CLIENTS; ++i) {
+        server_client_deinit(&self->clients[i]);
+    }
 }
 
 static int server_acceptSocket(struct server *self) {
@@ -101,7 +92,7 @@ static int server_acceptSocket(struct server *self) {
 
             if (epoll_ctl(self->epollFd, EPOLL_CTL_ADD, newSocketFd, &newSocketEvent) < 0) goto cleanup1;
 
-            server_client_init(&self->clients[i], newSocketFd);
+            server_client_open(&self->clients[i], newSocketFd);
             return 0;
         }
     }
@@ -122,10 +113,11 @@ static int32_t server_findLineEnd(uint8_t *buffer, int32_t index, int32_t end) {
     return -1;
 }
 
-static int server_sendWebsocket(struct server *self, struct server_client *client, uint8_t *message, int32_t messageLength) {
+static int server_sendWebsocketMessage(struct server *self, struct server_client *client, uint8_t *message, int32_t messageLength, bool isText) {
     if (messageLength >= 1000) return -1;
-    // TODO opcode?
-    self->scratchSpace[0] = 0x80 | 0x01;
+    if (isText) self->scratchSpace[0] = 0x81;
+    else self->scratchSpace[0] = 0x82;
+
     int32_t payloadIndex;
     if (messageLength < 126) {
         self->scratchSpace[1] = messageLength;
@@ -139,11 +131,12 @@ static int server_sendWebsocket(struct server *self, struct server_client *clien
     memcpy(&self->scratchSpace[payloadIndex], message, messageLength);
 
     int32_t totalLen = payloadIndex + messageLength;
-    if (send(client->fd, self->scratchSpace, totalLen, 0) != totalLen) return -1;
-    
+    if (send(client->fd, self->scratchSpace, totalLen, 0) != totalLen) return -2;
+
     return 0;
 }
 
+// Returns 1 if the connection should be kept.
 static int server_handleWebsocket(struct server *self, struct server_client *client) {
     if (client->receiveLength < 2) return 1; // No space for even the payload length.
     bool fin = client->receiveBuffer[0] & 0x80;
@@ -151,20 +144,20 @@ static int server_handleWebsocket(struct server *self, struct server_client *cli
 
     int opcode = client->receiveBuffer[0] & 0x0F;
     bool masking = client->receiveBuffer[1] & 0x80;
-    if (!masking) return -1;
+    if (!masking) return -2;
 
-    uint64_t payloadLen = client->receiveBuffer[1] & 0x7F;
+    uint64_t payloadLength = client->receiveBuffer[1] & 0x7F;
     int32_t maskingKeyIndex;
-    if (payloadLen == 126) {
+    if (payloadLength == 126) {
         if (client->receiveLength < 4) return 1;
-        payloadLen = (
+        payloadLength = (
             ((uint64_t)client->receiveBuffer[2] << 8) |
             ((uint64_t)client->receiveBuffer[3])
         );
         maskingKeyIndex = 4;
-    } else if (payloadLen == 127) {
+    } else if (payloadLength == 127) {
         if (client->receiveLength < 10) return 1;
-        payloadLen = (
+        payloadLength = (
             ((uint64_t)client->receiveBuffer[2] << 54) |
             ((uint64_t)client->receiveBuffer[3] << 48) |
             ((uint64_t)client->receiveBuffer[4] << 40) |
@@ -177,32 +170,40 @@ static int server_handleWebsocket(struct server *self, struct server_client *cli
         maskingKeyIndex = 10;
     } else maskingKeyIndex = 2;
     int32_t payloadStart = maskingKeyIndex + 4;
-    if (client->receiveLength - payloadStart < payloadLen) return 1;
+    if (client->receiveLength - payloadStart < payloadLength) return 1;
 
-    for (int32_t i = 0; i < payloadLen; ++i) {
+    for (int32_t i = 0; i < payloadLength; ++i) {
         client->receiveBuffer[payloadStart + i] ^= client->receiveBuffer[maskingKeyIndex + (i % 4)];
     }
 
-    if (opcode == 0x8) {
-        // TODO should probably send a close frame.
-        server_client_deinit(client);
-        return 0;
+    switch (opcode) {
+        case 0x1:   // Text
+        case 0x2: { // Binary
+            if (self->callbacks.onMessage(self->callbacks.data, client, &client->receiveBuffer[payloadStart], payloadLength, opcode & 0x1) < 0) return -3;
+            break;
+        }
+        case 0x8: { // Close
+            // TODO should probably send a close frame.
+            return 0;
+        }
+        case 0x9: { // Ping
+            // TODO reply
+            break;
+        }
+        case 0xA: { // Pong
+            // TODO callback?
+            break;
+        }
+        default: { // TODO continuation frames
+            return -3;
+        }
     }
-    printf("Got websocket packet!! %.*s\n", (int)payloadLen, &client->receiveBuffer[payloadStart]);
-    server_sendWebsocket(self, client, &client->receiveBuffer[payloadStart], (int)payloadLen);
-    server_client_setReceiveLength(client, 0);
-    return 0;
+    client->receiveLength = 0;
+    return 1;
 }
 
-static int server_handleRequest(struct server *self, struct server_client *client) {
-    if (client->isWebsocket) {
-        if (server_handleWebsocket(self, client) < 0) {
-            server_client_deinit(client);
-            return -1;
-        }
-        
-        return 0;
-    }
+// Returns 1 if the connection should be kept.
+static int server_handleHttpRequest(struct server *self, struct server_client *client) {
     printf("Got: %.*s\n", client->receiveLength, client->receiveBuffer);
 
     int32_t lineEnd = server_findLineEnd(client->receiveBuffer, 0, client->receiveLength);
@@ -245,6 +246,7 @@ static int server_handleRequest(struct server *self, struct server_client *clien
         }
 
         if (websocketKeyStart != 0) {
+            // Respond to websocket upgrade request.
             memcpy(self->scratchSpace, &client->receiveBuffer[websocketKeyStart], 24);
             memcpy(&self->scratchSpace[24], "258EAFA5-E914-47DA-95CA-C5AB0DC85B11", 36);
 
@@ -255,61 +257,64 @@ static int server_handleRequest(struct server *self, struct server_client *clien
 
             size_t base64Len;
             uint8_t *base64Encoded = base64_encode(&self->scratchSpace[512], SHA1HashSize, &base64Len);
-            if (base64Encoded == NULL) goto handledRequest;
-            
+            if (base64Encoded == NULL) return -1;
+
             memcpy(self->scratchSpace, server_WEBSOCKET_ACCEPT_START, server_WEBSOCKET_ACCEPT_START_LEN);
             memcpy(&self->scratchSpace[server_WEBSOCKET_ACCEPT_START_LEN], base64Encoded, server_WEBSOCKET_ACCEPT_START_LEN);
             memcpy(&self->scratchSpace[server_WEBSOCKET_ACCEPT_START_LEN + base64Len], "\r\n\r\n", 4);
 
             printf("Full Response: %.*s", (int)(server_WEBSOCKET_ACCEPT_START_LEN + base64Len + 4), self->scratchSpace);
-            server_client_setIsWebsocket(client);
-            server_client_setReceiveLength(client, 0);
+            client->isWebsocket = true;
+            client->receiveLength = 0;
 
             int32_t len = server_WEBSOCKET_ACCEPT_START_LEN + base64Len + 4;
-            if (send(client->fd, self->scratchSpace, len, 0) != len) {
-                server_client_deinit(client);
-                return -2;
-            }
-            return 0;
-        } else {
-            for (int32_t i = 0; i < self->fileResponsesLength; ++i) {
-                if (
-                    self->fileResponses[i].urlLength == urlLength &&
-                    memcmp(self->fileResponses[i].url, urlStart, urlLength) == 0
-                ) {
-                    send(client->fd, self->fileResponses[i].response, self->fileResponses[i].responseLength, 0);
-                    goto handledRequest;
-                }
+            if (send(client->fd, self->scratchSpace, len, 0) != len) return -2;
+            if (self->callbacks.onConnect(self->callbacks.data, client) < 0) return -3;
+            return 1;
+        }
+
+        // Respond to normal GET request.
+        for (int32_t i = 0; i < self->fileResponsesLength; ++i) {
+            if (
+                self->fileResponses[i].urlLength == urlLength &&
+                memcmp(self->fileResponses[i].url, urlStart, urlLength) == 0
+            ) {
+                if (send(client->fd, self->fileResponses[i].response, self->fileResponses[i].responseLength, 0) != self->fileResponses[i].responseLength) return -3;
+                return 0;
             }
         }
     }
-    uint8_t *response = (uint8_t *)"HTTP/1.1 404 Not Found\r\nContent-Length:0\r\n\r\n";
-    send(client->fd, response, 44, 0);
-
-    handledRequest:
-    server_client_deinit(client);
+    // We don't have any useful response, just send 404.
+    if (send(client->fd, "HTTP/1.1 404 Not Found\r\nContent-Length:0\r\n\r\n", 44, 0) != 44) return -4;
     return 0;
 }
 
 static int server_handleClient(struct server *self, struct server_client *client) {
     int32_t remainingBuffer = server_RECEIVE_BUFFER_SIZE - client->receiveLength;
     if (remainingBuffer <= 0) {
-        server_client_deinit(client);
+        server_client_close(client);
         return -1;
     }
 
     uint8_t *receivePosition = &client->receiveBuffer[client->receiveLength];
     ssize_t recvLength = recv(client->fd, receivePosition, remainingBuffer, 0);
     if (recvLength < 0) {
-        server_client_deinit(client);
+        server_client_close(client);
         return -2;
     } else if (recvLength == 0) {
-        server_client_deinit(client);
+        server_client_close(client);
         return 1;
     } else {
         client->receiveLength += recvLength;
-        if (server_handleRequest(self, client) < 0) {
-            return -3;   
+
+        int status;
+        if (client->isWebsocket) status = server_handleWebsocket(self, client);
+        else status = server_handleHttpRequest(self, client);
+
+        if (status != 1) { // Connection no longer in progress.
+            server_client_close(client);
+            if (client->isWebsocket) self->callbacks.onDisconnect(self->callbacks.data, client); // TODO is this only place?
+            if (status < 0) return -4;
         }
     }
     return 0;

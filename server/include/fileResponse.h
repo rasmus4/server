@@ -15,11 +15,6 @@ static inline void fileResponse_init(
     int32_t urlLength,
     uint8_t *response,
     int32_t responseLength
-) {
-    self->url = url;
-    self->urlLength = urlLength;
-    self->response = response;
-    self->responseLength = responseLength;
-}
+);
 
-#define fileResponse_DEINIT(SELF)
+static inline void fileResponse_deinit(struct fileResponse *self);
