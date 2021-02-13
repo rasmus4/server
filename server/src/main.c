@@ -1,10 +1,6 @@
 #include "server.h"
 #include "fileResponse.h"
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <dirent.h>
-
 // TODO rewrite this
 #define MAX_RESPONSES 2048
 #define MAX_RESPONSE_PATH_LENGTH 128

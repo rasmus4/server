@@ -1,10 +1,6 @@
 #pragma once
 #include "fileResponse.h"
 
-#include <sys/epoll.h>
-#include <unistd.h>
-#include <stdbool.h>
-
 #define server_RECEIVE_BUFFER_SIZE 400024
 #define server_MAX_EPOLL_EVENTS 64
 #define server_MAX_CLIENTS 10

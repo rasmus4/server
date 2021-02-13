@@ -2,15 +2,6 @@
 #include "base64.h"
 #include "sha1.h"
 
-#include <stdio.h>
-#include <string.h>
-#include <stdbool.h>
-
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <sys/types.h>
-#include <fcntl.h>
-
 #define server_WEBSOCKET_ACCEPT_START \
     "HTTP/1.1 101 Switching Protocols\r\n" \
     "Upgrade: websocket\r\n" \
@@ -74,7 +65,10 @@ static int server_init(struct server *self, struct fileResponse *fileResponses, 
             self->listenSocketFd,
             &listenSocketEvent
         ) < 0
-    ) return -6;
+    ) {
+        perror("uh oh\n");
+        return -6;
+    }
 
     for (int32_t i = 0; i < server_MAX_CLIENTS; ++i) {
         server_client_init_invalid(&self->clients[i]);
@@ -84,13 +78,25 @@ static int server_init(struct server *self, struct fileResponse *fileResponses, 
 }
 
 static int server_acceptSocket(struct server *self) {
-    int newSocketFd = accept(self->listenSocketFd, NULL, NULL);
-    if (newSocketFd < 0) goto cleanup0;
+    struct sockaddr_in clientAddr;
+    unsigned int size = sizeof(clientAddr);
+    int newSocketFd = accept(self->listenSocketFd, &clientAddr, &size);
+    int status;
+    if (newSocketFd < 0) {
+        status = -1;
+        goto cleanup0;
+    }
 
     int currentFlags = fcntl(newSocketFd, F_GETFL, 0);
-    if (currentFlags == -1) goto cleanup1;
+    if (currentFlags == -1) {
+        status = -2;
+        goto cleanup1;
+    }
 
-    if (fcntl(newSocketFd, F_SETFL, currentFlags | O_NONBLOCK) == -1) goto cleanup1;
+    if (fcntl(newSocketFd, F_SETFL, currentFlags | O_NONBLOCK) == -1) {
+        status = -3;
+        goto cleanup1;
+    }
 
     // Find empty client spot
     for (int i = 0; i < server_MAX_CLIENTS; ++i) {
@@ -99,7 +105,10 @@ static int server_acceptSocket(struct server *self) {
             newSocketEvent.events = EPOLLIN;
             newSocketEvent.data.ptr = &self->clients[i];
 
-            if (epoll_ctl(self->epollFd, EPOLL_CTL_ADD, newSocketFd, &newSocketEvent) < 0) goto cleanup1;
+            if (epoll_ctl(self->epollFd, EPOLL_CTL_ADD, newSocketFd, &newSocketEvent) < 0) {
+                status = -4;
+                goto cleanup1;
+            }
 
             server_client_init(&self->clients[i], newSocketFd);
             return 0;
@@ -112,7 +121,7 @@ static int server_acceptSocket(struct server *self) {
     cleanup1:
     close(newSocketFd);
     cleanup0:
-    return -1;
+    return status;
 }
 
 static int32_t server_findLineEnd(uint8_t *buffer, int32_t index, int32_t end) {
