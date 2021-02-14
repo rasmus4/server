@@ -125,7 +125,7 @@ int writeHeaderOutput(char *fileName, char *arrayName) {
     return status;
 }
 
-int handleIncludes(char *includeStartPattern, char *includeEndPattern) {
+int handleInclude(char *includeStartPattern, char *includeEndPattern) {
     int status;
     char *includeStart = strstr(buffer, includeStartPattern);
     if (!includeStart) {
@@ -168,14 +168,14 @@ int main(int argc, char **argv) {
     int complete = 0;
     while (!complete) {
         complete = 1;
-        status = handleIncludes("<!--INCLUDE(", ")-->");
+        status = handleInclude("<!--INCLUDE(", ")-->");
         if (status < 0) {
             printf("Error: Failed to handle Html include (%d)\n", status);
             status = 1;
             goto cleanup_buffer;
         }
         complete &= status;
-        status = handleIncludes("/*INCLUDE(", ")*/");
+        status = handleInclude("/*INCLUDE(", ")*/");
         if (status < 0) {
             printf("Error: Failed to handle Javascript include (%d)\n", status);
             status = 1;
