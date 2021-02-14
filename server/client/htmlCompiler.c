@@ -6,10 +6,10 @@
 #include <inttypes.h>
 #include <string.h>
 
-char *buffer = NULL;
-int bufferLength = 0;
+static char *buffer = NULL;
+static int bufferLength = 0;
 
-int replaceWithFile(int replaceIndex, int replaceLength, char *fileName, int fileNameLength) {
+static int replaceWithFile(int replaceIndex, int replaceLength, char *fileName, int fileNameLength) {
     int status;
     char *fileNameZ = malloc(fileNameLength + 1);
     if (!fileNameZ) {
@@ -62,7 +62,7 @@ int replaceWithFile(int replaceIndex, int replaceLength, char *fileName, int fil
     return status;
 }
 
-int writeToFile(char *fileName, char *content, int contentLength) {
+static int writeToFile(char *fileName, char *content, int contentLength) {
     int status;
     FILE *handle = fopen(fileName, "w");
     if (!handle) {
@@ -80,7 +80,7 @@ int writeToFile(char *fileName, char *content, int contentLength) {
     return status;
 }
 
-int writeHeaderOutput(char *fileName, char *arrayName) {
+static int writeHeaderOutput(char *fileName, char *arrayName) {
     int status;
     char start[] = "#include <stdint.h>\nuint8_t ";
     char afterName[] = "[] = {";
@@ -125,7 +125,7 @@ int writeHeaderOutput(char *fileName, char *arrayName) {
     return status;
 }
 
-int handleInclude(char *includeStartPattern, char *includeEndPattern) {
+static int handleInclude(char *includeStartPattern, char *includeEndPattern) {
     int status;
     char *includeStart = strstr(buffer, includeStartPattern);
     if (!includeStart) {
