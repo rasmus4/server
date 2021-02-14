@@ -177,7 +177,7 @@ int main(int argc, char **argv) {
         complete &= status;
         status = handleInclude("/*INCLUDE(", ")*/");
         if (status < 0) {
-            printf("Error: Failed to handle Javascript include (%d)\n", status);
+            printf("Error: Failed to handle Javascript/Css include (%d)\n", status);
             status = 1;
             goto cleanup_buffer;
         }
