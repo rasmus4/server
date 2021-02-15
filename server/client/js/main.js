@@ -20,12 +20,6 @@ class Main {
     }
 
     connect() {
-        if (this.socket) {
-            this.socket.removeEventListener("open", this.onSocketOpen);
-            this.socket.removeEventListener("message", this.onSocketMessage);
-            this.socket.removeEventListener("close", this.onSocketClose);
-            this.socket.removeEventListener("error", this.onSocketError);
-        }
         this.switchView(Main.connectingView);
 
         this.onSocketOpen = (event) => {
@@ -37,17 +31,18 @@ class Main {
             document.getElementById("test").innerHTML = receiveData.getUint32(0, true);
         };
         this.onSocketClose = (event) => {
-            this.connect();
-        };
-        this.onSocketError = (event) => {
-            this.connect();
+            this.socket.removeEventListener("open", this.onSocketOpen);
+            this.socket.removeEventListener("message", this.onSocketMessage);
+            this.socket.removeEventListener("close", this.onSocketClose);
+            setTimeout(() => {
+                this.connect();
+            }, 1000);
         };
         this.socket = new WebSocket("ws://" + location.host + "/chess");
         this.socket.binaryType = "arraybuffer";
         this.socket.addEventListener("open", this.onSocketOpen);
-        this.socket.addEventListener("message", this.onSocketMessage);
         this.socket.addEventListener("close", this.onSocketClose);
-        this.socket.addEventListener("error", this.onSocketError);
+        this.socket.addEventListener("message", this.onSocketMessage);
     }
 }
 
