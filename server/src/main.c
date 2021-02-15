@@ -46,7 +46,7 @@ int main_createFileResponse(struct fileResponse *response) {
     memcpy(responseBuffer, responseHttpStart, sizeof(responseHttpStart) - 1);
 
     uint8_t *responsePos = &responseBuffer[sizeof(responseHttpStart) - 1];
-    int32_t remainingLength = responseLength;
+    int32_t remainingLength = sizeof(generatedHtml);
     while (magnitude >= 10) {
         magnitude /= 10;
         int32_t digitValue = remainingLength / magnitude;
