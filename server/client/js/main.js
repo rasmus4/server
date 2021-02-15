@@ -1,8 +1,8 @@
 "use strict";
 
-/*INCLUDE(src/homeView.js)*/
-/*INCLUDE(src/chessView.js)*/
-/*INCLUDE(src/connectingView.js)*/
+/*INCLUDE(js/homeView.js)*/
+/*INCLUDE(js/chessView.js)*/
+/*INCLUDE(js/connectingView.js)*/
 
 class Main {
     constructor() {
