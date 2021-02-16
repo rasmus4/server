@@ -73,7 +73,7 @@ class Main {
                 }
             } catch (error) {
                 console.error("Error handling server message:", error);
-
+                // TODO what do on errors?
             }
         };
         this.onSocketClose = (event) => {
