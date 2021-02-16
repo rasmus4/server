@@ -66,10 +66,7 @@ class Main {
                         this.setView(this.chessView);
                         this.chessView.update(receiveData, 4);
                         break;
-                    default: {
-                        console.error("Invalid view:", view);
-                        this.setView(null);
-                    }
+                    default: throw "Invalid view!";
                 }
             } catch (error) {
                 console.error("Error handling server message:", error);
