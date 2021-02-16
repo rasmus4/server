@@ -11,6 +11,10 @@ struct server server;
 
 int onConnect(void *data, struct server_client *client) {
     printf("onConnect\n");
+    uint32_t version = 1;
+    if (server_sendWebsocketMessage(&server, client, (uint8_t *)&version, 4, false) < 0) return -1;
+    uint8_t view = 3;
+    if (server_sendWebsocketMessage(&server, client, &view, 1, false) < 0) return -1;
     return 0;
 }
 
@@ -21,7 +25,8 @@ int onDisconnect(void *data, struct server_client *client) {
 
 int onMessage(void *data, struct server_client *client, uint8_t *message, int32_t messageLength, bool isText) {
     printf("Got websocket packet!! %.*s\n", (int)messageLength, message);
-    return server_sendWebsocketMessage(&server, client, message, messageLength, isText);
+    //server_sendWebsocketMessage(&server, client, message, messageLength, isText);
+    return 0;
 }
 
 int main_createFileResponse(struct fileResponse *response) {

@@ -8,4 +8,7 @@ class ChessView {
     close() {
         this.div.classList.add("hiddenView");
     }
+    update(dataView, offset) {
+        
+    }
 }

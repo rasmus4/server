@@ -1,6 +1,6 @@
-class HomeView {
+class RoomView {
     constructor() {
-        this.div = document.getElementById("homeView");
+        this.div = document.getElementById("roomView");
     }
     open() {
         this.div.classList.remove("hiddenView");
