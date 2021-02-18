@@ -40,7 +40,7 @@ static int server_init(
     struct sockaddr_in listenAddr;
     listenAddr.sin_family = AF_INET;
     listenAddr.sin_addr.s_addr = INADDR_ANY;
-    listenAddr.sin_port = htons(8080);
+    listenAddr.sin_port = htons(8089);
 
     if (bind(self->listenSocketFd, (struct sockaddr *)&listenAddr, sizeof(listenAddr)) < 0) return -3;
 
