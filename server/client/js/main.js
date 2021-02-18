@@ -78,7 +78,7 @@ class Main {
             this.clearSocketListeners();
             setTimeout(() => {
                 this.connect();
-            }, 1000);
+            }, 5000);
         };
         this.socket = new WebSocket("ws://" + location.host + "/chess");
         this.socket.binaryType = "arraybuffer";

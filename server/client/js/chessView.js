@@ -50,7 +50,6 @@ class ChessView {
                 let baseY = y * this.tileSize;
                 this.context.fillRect(baseX, baseY, this.tileSize, this.tileSize);
                 
-                //this.context.setTransform(1, 0, 0, 1, 0.5, 0.5);
                 let piece = this.boardState[y * 8 + x];
                 if (piece !== 0) {
                     if (piece & ProtocolPieces.WHITE_FLAG) {
@@ -112,7 +111,7 @@ class ChessView {
                         }
                         case ProtocolPieces.ROOK: {
                             const verticalPad = this.tileSize / 8;
-                            const horizontalPad = this.tileSize / 3.8;
+                            const horizontalPad = this.tileSize / 4;
                             this.context.fillRect(baseX + horizontalPad, baseY + verticalPad, this.tileSize - 2 * horizontalPad, this.tileSize - 2 * verticalPad);
                             this.context.strokeRect(baseX + horizontalPad, baseY + verticalPad, this.tileSize - 2 * horizontalPad, this.tileSize - 2 * verticalPad);
                             break;
@@ -148,7 +147,7 @@ class ChessView {
                             this.context.lineTo(baseX + horizontalFirstDipPad, baseY + verticalDipPad);
                             this.context.lineTo(baseX + horizontalFirstTopPad, baseY + verticalFirstPad);
 
-                            this.context.lineTo(baseX +  horizontalBasePad, baseY + verticalDipPad);
+                            this.context.lineTo(baseX + horizontalBasePad, baseY + verticalDipPad);
                             this.context.lineTo(baseX + horizontalBasePad, baseY + this.tileSize - verticalMiddlePad);
                             this.context.fill();
                             this.context.stroke();
@@ -156,20 +155,21 @@ class ChessView {
                         }
                         case ProtocolPieces.KING: {
                             const horizontalBasePad = this.tileSize / 4;
-                            const horizontalUpperPad = this.tileSize / 7;
+                            const horizontalUpperPad = this.tileSize / 5;
                             const horizontalDipPad = this.tileSize / 2.5;
-                            const verticalPad = this.tileSize / 3;
+                            const verticalPad = this.tileSize / 4;
+                            const verticalFirstPad = this.tileSize / 3.5;
 
                             this.context.beginPath();
                             this.context.moveTo(baseX + horizontalBasePad, baseY + this.tileSize - verticalPad);
                             this.context.lineTo(baseX + this.tileSize - horizontalBasePad, baseY + this.tileSize - verticalPad);
                             this.context.lineTo(baseX + this.tileSize - horizontalBasePad, baseY + this.tileSize / 2);
 
-                            this.context.lineTo(baseX + this.tileSize - horizontalUpperPad, baseY + verticalPad);
+                            this.context.lineTo(baseX + this.tileSize - horizontalUpperPad, baseY + verticalFirstPad);
                             this.context.lineTo(baseX + this.tileSize - horizontalDipPad, baseY + this.tileSize / 2);
                             this.context.lineTo(baseX + this.tileSize / 2, baseY + verticalPad);
                             this.context.lineTo(baseX + horizontalDipPad, baseY + this.tileSize / 2);
-                            this.context.lineTo(baseX + horizontalUpperPad, baseY + verticalPad);
+                            this.context.lineTo(baseX + horizontalUpperPad, baseY + verticalFirstPad);
 
                             this.context.lineTo(baseX +  horizontalBasePad, baseY + this.tileSize / 2);
                             this.context.lineTo(baseX + horizontalBasePad, baseY + this.tileSize - verticalPad);
