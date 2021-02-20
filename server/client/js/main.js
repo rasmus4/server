@@ -1,18 +1,25 @@
 "use strict";
 class Main {
     constructor() {
-        this.homeView = new HomeView();
-        this.chessView = new ChessView();
-        this.connectingView = new ConnectingView();
-        this.roomView = new RoomView();
-
         this.currentView = null;
         this.socket = null;
         this.connected = false;
         this.buffer = new ArrayBuffer(1024);
         this.bufferByteView = new Uint8Array(this.buffer);
         this.bufferDataView = new DataView(this.buffer);
-        this.bufferDataView.setUint32(0, 65, true);
+
+        this.homeView = new HomeView();
+        this.onMove = (from, to) => {
+            this.bufferDataView.setUint8(0, ProtocolClientOp.MOVE);
+            this.bufferDataView.setUint8(1, from.x);
+            this.bufferDataView.setUint8(2, from.y);
+            this.bufferDataView.setUint8(3, to.x);
+            this.bufferDataView.setUint8(4, to.y);
+            this.socket.send(this.bufferByteView.subarray(0, 5));
+        }
+        this.chessView = new ChessView(this.onMove);
+        this.connectingView = new ConnectingView();
+        this.roomView = new RoomView();
     }
     setView(newView) {
         if (newView === this.currentView) return;
@@ -32,10 +39,11 @@ class Main {
         this.setView(this.connectingView);
 
         this.onSocketOpen = (event) => {
-            this.socket.send(this.bufferByteView.subarray(0, 4));
+            console.log("socket open!");
         };
         this.onSocketMessage = (event) => {
             try {
+                console.log(event.data);
                 let receiveData = new DataView(event.data);
                 if (!this.connected) {
                     let version = receiveData.getUint32(0, true);
@@ -52,19 +60,19 @@ class Main {
                     return;
                 }
 
-                let view = receiveData.getUint8(0, true);
-                switch (view) {
-                    case ProtocolView.HOME:
+                let op = receiveData.getUint8(0, true);
+                switch (op) {
+                    case ProtocolServerOp.HOME:
                         this.setView(this.homeView);
-                        this.homeView.update(receiveData, 4);
+                        this.homeView.update(receiveData, 1);
                         break;
-                    case ProtocolView.ROOM:
+                    case ProtocolServerOp.ROOM:
                         this.setView(this.roomView);
-                        this.roomView.update(receiveData, 4);
+                        this.roomView.update(receiveData, 1);
                         break;
-                    case ProtocolView.CHESS:
+                    case ProtocolServerOp.CHESS:
                         this.setView(this.chessView);
-                        this.chessView.update(receiveData, 4);
+                        this.chessView.update(receiveData, 1);
                         break;
                     default: throw "Invalid view!";
                 }

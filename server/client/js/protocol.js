@@ -1,6 +1,10 @@
 const protocolVersion = 1;
 
-const ProtocolView = {
+const ProtocolClientOp = {
+    MOVE: 1
+};
+
+const ProtocolServerOp = {
     HOME: 1,
     ROOM: 2,
     CHESS: 3

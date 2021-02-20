@@ -1,12 +1,14 @@
 class ChessView {
-    constructor() {
+    constructor(moveCallback) {
+        this.moveCallback = moveCallback;
+
         this.div = document.getElementById("chessView");
         this.canvas = document.getElementById("chessViewCanvas");
         this.context = this.canvas.getContext("2d");
         this.boardState = new Uint8Array(64); // left->right, top->bottom
-        this.initBoardStateTest();
+        this.isWhite = undefined;
+        this.selectedTile = null;
         this.setTileSize(80);
-        this.draw();
     }
     // TODO remove
     initBoardStateTest() {
@@ -34,13 +36,40 @@ class ChessView {
         this.context.lineCap = "round";
     }
     open() {
+        this.selectedTile = null;
+        this.onMousedown = (event) => {
+            if (event.button === 0) {
+                let tile = {
+                    x: Math.trunc(event.offsetX / this.tileSize),
+                    y: Math.trunc(event.offsetY / this.tileSize),
+                };
+                if (this.selectedTile === null) {
+                    this.selectedTile = tile;
+                } else {
+                    this.moveCallback(this.selectedTile, tile);
+                    this.selectedTile = null;
+                }
+                this.draw();
+            }
+        }
+        this.canvas.addEventListener("mousedown", this.onMousedown);
+
         this.div.classList.remove("hiddenView");
     }
     close() {
+        this.canvas.removeEventListener("mousedown", this.onMousedown);
         this.div.classList.add("hiddenView");
     }
     update(dataView, offset) {
-        
+        this.isWhite = Boolean(dataView.getUint8(offset++));
+        for (let i = 0; i < 64; ++i) {
+            this.boardState[i] = dataView.getUint8(offset + i);
+        }
+        this.draw();
+    }
+    getBoardStateIndex(x, y) {
+        if (this.isWhite) return y * 8 + x;
+        return 63 - (y * 8) - x;
     }
     draw() {
         for (let x = 0; x < 8; ++x) {
@@ -49,17 +78,22 @@ class ChessView {
                 let baseX = x * this.tileSize;
                 let baseY = y * this.tileSize;
                 this.context.fillRect(baseX, baseY, this.tileSize, this.tileSize);
+
+                if (this.selectedTile !== null && x === this.selectedTile.x && y === this.selectedTile.y) {
+                    this.context.globalAlpha = 0.2;
+                    this.context.fillStyle = "#00FF00";
+                    this.context.fillRect(baseX, baseY, this.tileSize, this.tileSize);
+                    this.context.globalAlpha = 1.0;
+                }
                 
-                let piece = this.boardState[y * 8 + x];
+                let piece = this.boardState[this.getBoardStateIndex(x, y)];
                 if (piece !== 0) {
                     if (piece & ProtocolPieces.WHITE_FLAG) {
                         this.context.fillStyle = "#FFFFFF";
-                        this.context.strokeStyle = "#000000";
-                    }
-                    else {
+                    } else {
                         this.context.fillStyle = "#000000";
-                        this.context.strokeStyle = "#000000";
                     }
+                    this.context.strokeStyle = "#000000";
 
                     switch (piece & ProtocolPieces.PIECE_MASK) {
                         case ProtocolPieces.PAWN: {

@@ -1,5 +1,6 @@
 #include "server.h"
 #include "fileResponse.h"
+#include "protocol.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -11,10 +12,25 @@ struct server server;
 
 int onConnect(void *data, struct server_client *client) {
     printf("onConnect\n");
-    uint32_t version = 1;
+    uint32_t version = protocol_VERSION;
     if (server_sendWebsocketMessage(&server, client, (uint8_t *)&version, 4, false) < 0) return -1;
-    uint8_t view = 3;
-    if (server_sendWebsocketMessage(&server, client, &view, 1, false) < 0) return -1;
+    uint8_t buffer[66] = {0};
+    buffer[0] = protocol_CHESS;
+    buffer[1] = 1;
+    buffer[2] = buffer[9] = protocol_ROOK;
+    buffer[3] = buffer[8] = protocol_KNIGHT;
+    buffer[4] = buffer[7] = protocol_BISHOP;
+    buffer[5] = protocol_QUEEN;
+    buffer[6] = protocol_KING;
+    for (int i = 0; i < 8; ++i) buffer[10 + i] = protocol_PAWN;
+
+    buffer[58] = buffer[65] = protocol_ROOK | protocol_WHITE_FLAG;
+    buffer[59] = buffer[64] = protocol_KNIGHT | protocol_WHITE_FLAG;
+    buffer[60] = buffer[63] = protocol_BISHOP | protocol_WHITE_FLAG;
+    buffer[61] = protocol_QUEEN | protocol_WHITE_FLAG;
+    buffer[62] = protocol_KING | protocol_WHITE_FLAG;
+    for (int i = 0; i < 8; ++i) buffer[50 + i] = protocol_PAWN | protocol_WHITE_FLAG;
+    if (server_sendWebsocketMessage(&server, client, buffer, 66, false) < 0) return -1;
     return 0;
 }
 
