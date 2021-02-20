@@ -1,6 +1,6 @@
 class ChessView {
-    constructor(moveCallback) {
-        this.moveCallback = moveCallback;
+    constructor(onMove) {
+        this.onMove = onMove;
 
         this.div = document.getElementById("chessView");
         this.canvas = document.getElementById("chessViewCanvas");
@@ -46,7 +46,7 @@ class ChessView {
                 if (this.selectedTile === null) {
                     this.selectedTile = tile;
                 } else {
-                    this.moveCallback(this.selectedTile, tile);
+                    this.onMove(this.selectedTile, tile);
                     this.selectedTile = null;
                 }
                 this.draw();

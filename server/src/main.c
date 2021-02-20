@@ -15,7 +15,7 @@ int onConnect(void *data, struct server_client *client) {
     uint32_t version = protocol_VERSION;
     if (server_sendWebsocketMessage(&server, client, (uint8_t *)&version, 4, false) < 0) return -1;
     uint8_t buffer[66] = {0};
-    buffer[0] = protocol_CHESS;
+    buffer[0] = protocol_ROOM;
     buffer[1] = 1;
     buffer[2] = buffer[9] = protocol_ROOK;
     buffer[3] = buffer[8] = protocol_KNIGHT;
@@ -30,7 +30,7 @@ int onConnect(void *data, struct server_client *client) {
     buffer[61] = protocol_QUEEN | protocol_WHITE_FLAG;
     buffer[62] = protocol_KING | protocol_WHITE_FLAG;
     for (int i = 0; i < 8; ++i) buffer[50 + i] = protocol_PAWN | protocol_WHITE_FLAG;
-    if (server_sendWebsocketMessage(&server, client, buffer, 66, false) < 0) return -1;
+    if (server_sendWebsocketMessage(&server, client, buffer, 5/*66*/, false) < 0) return -1;
     return 0;
 }
 

@@ -1,7 +1,12 @@
 const protocolVersion = 1;
 
 const ProtocolClientOp = {
-    MOVE: 1
+    // Chess
+    MOVE: 1,
+    // Home
+    CREATE: 2,
+    JOIN: 3,
+    BACK: 4
 };
 
 const ProtocolServerOp = {
