@@ -25,14 +25,13 @@ struct server_callbacks {
     int (*onMessage)(void *data, struct server_client *client, uint8_t *message, int32_t messageLength, bool isText);
 };
 
-static inline void server_callbacks_init(
+static inline void server_callbacks_create(
     struct server_callbacks *self,
     void *data,
     int (*onConnect)(void *data, struct server_client *client),
     int (*onDisconnect)(void *data, struct server_client *client),
     int (*onMessage)(void *data, struct server_client *client, uint8_t *message, int32_t messageLength, bool isText)
 );
-static inline void server_callbacks_deinit(struct server_callbacks *self);
 
 struct server {
     int listenSocketFd;
@@ -49,7 +48,8 @@ static int server_init(
     struct server *self,
     struct fileResponse *fileResponses,
     int32_t fileResponsesLength,
-    struct server_callbacks callbacks);
+    struct server_callbacks *callbacks // Copied
+);
 static inline void server_deinit(struct server *self);
 static int server_run(struct server *self);
 

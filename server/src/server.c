@@ -25,11 +25,11 @@ static int server_init(
     struct server *self,
     struct fileResponse *fileResponses,
     int fileResponsesLength,
-    struct server_callbacks callbacks
+    struct server_callbacks *callbacks
 ) {
     self->fileResponses = fileResponses;
     self->fileResponsesLength = fileResponsesLength;
-    self->callbacks = callbacks;
+    self->callbacks = *callbacks;
 
     self->listenSocketFd = socket(AF_INET, SOCK_STREAM, 0);
     if (self->listenSocketFd < 0) return -1;

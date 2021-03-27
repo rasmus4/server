@@ -1,6 +1,6 @@
 #include "fileResponse.h"
 
-static inline void fileResponse_init(
+static inline void fileResponse_create(
     struct fileResponse *self,
     uint8_t *url,
     int32_t urlLength,
@@ -12,5 +12,3 @@ static inline void fileResponse_init(
     self->response = response;
     self->responseLength = responseLength;
 }
-
-static inline void fileResponse_deinit(struct fileResponse *self) {}

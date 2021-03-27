@@ -1,6 +1,6 @@
 #include "server.h"
 
-static inline void server_callbacks_init(
+static inline void server_callbacks_create(
     struct server_callbacks *self,
     void *data,
     int (*onConnect)(void *data, struct server_client *client),
@@ -12,5 +12,3 @@ static inline void server_callbacks_init(
     self->onDisconnect = onDisconnect;
     self->onMessage = onMessage;
 }
-
-static inline void server_callbacks_deinit(struct server_callbacks *self) {}
