@@ -3,7 +3,10 @@
 #define protocol_VERSION 1
 
 enum protocol_clientOp {
-    protocol_MOVE = 1
+    protocol_MOVE = 1,
+    protocol_CREATE = 2,
+    protocol_JOIN = 3,
+    protocol_BACK = 4
 };
 
 enum protocol_serverOp {

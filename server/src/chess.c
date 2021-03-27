@@ -1,42 +1,36 @@
+#include "chess_client.c"
+#include "chess_room.c"
+
 #include "chess.h"
 
 #include "fileResponse.h"
 #include "protocol.h"
+#include "generatedHtml.h"
 
-#define SELF ((struct chess *)(data))
+#define SELF ((struct chess *)(self))
 
-static int chess_onConnect(void *data, struct server_client *client) {
-    printf("onConnect\n");
+static int chess_onConnect(void *self, struct server_client *client) {
+    // Complete handshake.
     uint32_t version = protocol_VERSION;
     if (server_sendWebsocketMessage(&SELF->server, client, (uint8_t *)&version, 4, false) < 0) return -1;
-    uint8_t buffer[66] = {0};
-    buffer[0] = protocol_ROOM;
-    buffer[1] = 1;
-    buffer[2] = buffer[9] = protocol_ROOK;
-    buffer[3] = buffer[8] = protocol_KNIGHT;
-    buffer[4] = buffer[7] = protocol_BISHOP;
-    buffer[5] = protocol_QUEEN;
-    buffer[6] = protocol_KING;
-    for (int i = 0; i < 8; ++i) buffer[10 + i] = protocol_PAWN;
 
-    buffer[58] = buffer[65] = protocol_ROOK | protocol_WHITE_FLAG;
-    buffer[59] = buffer[64] = protocol_KNIGHT | protocol_WHITE_FLAG;
-    buffer[60] = buffer[63] = protocol_BISHOP | protocol_WHITE_FLAG;
-    buffer[61] = protocol_QUEEN | protocol_WHITE_FLAG;
-    buffer[62] = protocol_KING | protocol_WHITE_FLAG;
-    for (int i = 0; i < 8; ++i) buffer[50 + i] = protocol_PAWN | protocol_WHITE_FLAG;
-    if (server_sendWebsocketMessage(&SELF->server, client, buffer, 5/*66*/, false) < 0) return -1;
+    struct chess_client *chessClient = &SELF->clients[client->index];
+    chess_client_create(chessClient, client);
+    if (chess_client_sendState(chessClient, SELF) < 0) return -2;
+
+    printf("onConnect\n");
     return 0;
 }
 
-static int chess_onDisconnect(void *data, struct server_client *client) {
+static int chess_onDisconnect(void *self, struct server_client *client) {
     printf("onDisconnect\n");
     return 0;
 }
 
-static int chess_onMessage(void *data, struct server_client *client, uint8_t *message, int32_t messageLength, bool isText) {
-    printf("Got websocket packet!! %.*s\n", (int)messageLength, message);
-    //server_sendWebsocketMessage(&server, client, message, messageLength, isText);
+static int chess_onMessage(void *self, struct server_client *client, uint8_t *message, int32_t messageLength, bool isText) {
+    printf("onMessage %.*s\n", (int)messageLength, message);
+    struct chess_client *chessClient = &SELF->clients[client->index];
+    if (chess_client_onMessage(chessClient, message, messageLength) < 0) return -1;
     return 0;
 }
 

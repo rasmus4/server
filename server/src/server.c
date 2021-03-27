@@ -1,3 +1,6 @@
+#include "server_client.c"
+#include "server_callbacks.c"
+
 #include "server.h"
 #include "base64.h"
 #include "sha1.h"
@@ -10,9 +13,6 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <fcntl.h>
-
-#include "server_client.c"
-#include "server_callbacks.c"
 
 #define server_WEBSOCKET_ACCEPT_START \
     "HTTP/1.1 101 Switching Protocols\r\n" \
@@ -62,7 +62,7 @@ static int server_init(
     ) return -6;
 
     for (int32_t i = 0; i < server_MAX_CLIENTS; ++i) {
-        server_client_init(&self->clients[i]);
+        server_client_init(&self->clients[i], i);
     }
 
     return 0;
@@ -76,12 +76,12 @@ static inline void server_deinit(struct server *self) {
 
 static int server_acceptSocket(struct server *self) {
     int newSocketFd = accept(self->listenSocketFd, NULL, NULL);
-    if (newSocketFd < 0) goto cleanup0;
+    if (newSocketFd < 0) goto cleanup_none;
 
     int currentFlags = fcntl(newSocketFd, F_GETFL, 0);
-    if (currentFlags == -1) goto cleanup1;
+    if (currentFlags == -1) goto cleanup_newSocketFd;
 
-    if (fcntl(newSocketFd, F_SETFL, currentFlags | O_NONBLOCK) == -1) goto cleanup1;
+    if (fcntl(newSocketFd, F_SETFL, currentFlags | O_NONBLOCK) == -1) goto cleanup_newSocketFd;
 
     // Find empty client spot
     for (int i = 0; i < server_MAX_CLIENTS; ++i) {
@@ -90,7 +90,7 @@ static int server_acceptSocket(struct server *self) {
             newSocketEvent.events = EPOLLIN;
             newSocketEvent.data.ptr = &self->clients[i];
 
-            if (epoll_ctl(self->epollFd, EPOLL_CTL_ADD, newSocketFd, &newSocketEvent) < 0) goto cleanup1;
+            if (epoll_ctl(self->epollFd, EPOLL_CTL_ADD, newSocketFd, &newSocketEvent) < 0) goto cleanup_newSocketFd;
 
             server_client_open(&self->clients[i], newSocketFd);
             return 0;
@@ -100,9 +100,9 @@ static int server_acceptSocket(struct server *self) {
     close(newSocketFd);
     return 1;
 
-    cleanup1:
+    cleanup_newSocketFd:
     close(newSocketFd);
-    cleanup0:
+    cleanup_none:
     return -1;
 }
 

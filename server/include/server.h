@@ -13,6 +13,7 @@ struct server_client {
     int fd;
     uint8_t receiveBuffer[server_RECEIVE_BUFFER_SIZE];
     int32_t receiveLength;
+    int index;
     bool isWebsocket;
 };
 

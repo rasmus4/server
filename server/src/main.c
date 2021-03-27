@@ -1,5 +1,4 @@
 #include "chess.h"
-#include "generatedHtml.h"
 
 #include <stdlib.h>
 #include <stdio.h>

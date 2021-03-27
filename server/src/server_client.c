@@ -1,7 +1,8 @@
 #include "server.h"
 
-static inline void server_client_init(struct server_client *self) {
+static inline void server_client_init(struct server_client *self, int32_t index) {
     self->fd = -1;
+    self->index = index;
 }
 static inline void server_client_deinit(struct server_client *self) {
     if (self->fd >= 0) {
