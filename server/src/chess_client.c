@@ -13,6 +13,10 @@ static int chess_client_sendState(struct chess_client *self, struct chess *chess
         uint8_t buffer[1] = { protocol_HOME };
         if (server_sendWebsocketMessage(&chess->server, self->client, buffer, sizeof(buffer), false) < 0) return -1;
     } else {
+        uint8_t buffer[5] = { protocol_ROOM };
+        buffer[1] = self->room;
+        if (server_sendWebsocketMessage(&chess->server, self->client, buffer, sizeof(buffer), false) < 0) return -2;
+
         /*uint8_t buffer[66] = {0};
         buffer[0] = protocol_CHESS;
         buffer[1] = 1;
@@ -31,9 +35,5 @@ static int chess_client_sendState(struct chess_client *self, struct chess *chess
         for (int i = 0; i < 8; ++i) buffer[50 + i] = protocol_PAWN | protocol_WHITE_FLAG;
         if (server_sendWebsocketMessage(&SELF->server, client, buffer, 66, false) < 0) return -1;*/
     }
-    return 0;
-}
-
-static int chess_client_onMessage(struct chess_client *self, uint8_t *message, uint32_t messageLength) {
     return 0;
 }

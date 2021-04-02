@@ -9,6 +9,16 @@
 
 #define SELF ((struct chess *)(self))
 
+static void chess_createRoom(struct chess *self, int32_t client_host) {
+    int32_t room = 0;
+    for (; room < server_MAX_CLIENTS; ++room) {
+        if (self->rooms[room].host < 0) break;
+    }
+
+    self->clients[client_host].room = room;
+    self->rooms[room].host = client_host;
+}
+
 static int chess_onConnect(void *self, struct server_client *client) {
     // Complete handshake.
     uint32_t version = protocol_VERSION;
@@ -30,7 +40,22 @@ static int chess_onDisconnect(void *self, struct server_client *client) {
 static int chess_onMessage(void *self, struct server_client *client, uint8_t *message, int32_t messageLength, bool isText) {
     printf("onMessage %.*s\n", (int)messageLength, message);
     struct chess_client *chessClient = &SELF->clients[client->index];
-    if (chess_client_onMessage(chessClient, message, messageLength) < 0) return -1;
+    
+    if (messageLength < 1) return -1;
+    switch (message[0]) {
+        case protocol_CREATE: {
+            chess_createRoom(SELF, client->index);
+            if (chess_client_sendState(chessClient, SELF) < 0) return -2;
+            break;
+        }
+        case protocol_JOIN: {
+            break;
+        }
+        case protocol_BACK: {
+            break;
+        }
+    }
+
     return 0;
 }
 
@@ -88,6 +113,11 @@ static inline void chess_deinitFileResponse(struct chess *self) {
 
 static int chess_init(struct chess *self) {
     int status;
+
+    for (int i = 0; i < server_MAX_CLIENTS; ++i) {
+        self->rooms[i].host = -1;
+    }
+
     if (chess_initFileResponse(self) < 0) {
         status = -1;
         goto cleanup_none;

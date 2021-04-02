@@ -17,6 +17,6 @@ class RoomView {
         this.div.classList.add("hiddenView");
     }
     update(dataView, offset) {
-        this.gameId.value = dataView.getInt32(offset).toString(); 
+        this.gameId.value = dataView.getInt32(offset, true).toString(); 
     }
 }

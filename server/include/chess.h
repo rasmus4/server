@@ -9,10 +9,8 @@ struct chess_client {
     int32_t room; // -1 if none.
 };
 
-static void chess_client_create(struct chess_client *self, struct server_client *client);
-
 struct chess_room {
-    int32_t host;
+    int32_t host; // -1 if room empty.
 };
 
 struct chess {
