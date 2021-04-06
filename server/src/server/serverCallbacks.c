@@ -1,7 +1,7 @@
-#include "server/server.h"
+#include "server/serverCallbacks.h"
 
-static inline void server_callbacks_create(
-    struct server_callbacks *self,
+static inline void serverCallbacks_create(
+    struct serverCallbacks *self,
     void *data,
     int (*onConnect)(void *data, struct server_client *client),
     void (*onDisconnect)(void *data, struct server_client *client),

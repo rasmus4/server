@@ -1,5 +1,6 @@
 #pragma once
 #include "fileResponse.h"
+#include "serverCallbacks.h"
 
 #include <sys/epoll.h>
 #include <unistd.h>
@@ -17,21 +18,6 @@ struct server_client {
     bool isWebsocket;
 };
 
-struct server_callbacks {
-    void *data;
-    int (*onConnect)(void *data, struct server_client *client); // Non-zero return prevents the connection.
-    void (*onDisconnect)(void *data, struct server_client *client);
-    int (*onMessage)(void *data, struct server_client *client, uint8_t *message, int32_t messageLength, bool isText); // Non-zero return closes connection.
-};
-
-static inline void server_callbacks_create(
-    struct server_callbacks *self,
-    void *data,
-    int (*onConnect)(void *data, struct server_client *client),
-    void (*onDisconnect)(void *data, struct server_client *client),
-    int (*onMessage)(void *data, struct server_client *client, uint8_t *message, int32_t messageLength, bool isText)
-);
-
 struct server {
     int listenSocketFd;
     int epollFd;
@@ -39,7 +25,7 @@ struct server {
     struct server_client clients[server_MAX_CLIENTS];
     struct fileResponse *fileResponses;
     int32_t fileResponsesLength;
-    struct server_callbacks callbacks;
+    struct serverCallbacks callbacks;
     uint8_t scratchSpace[1024];
 };
 
@@ -47,7 +33,7 @@ static int server_init(
     struct server *self,
     struct fileResponse *fileResponses,
     int32_t fileResponsesLength,
-    struct server_callbacks *callbacks // Copied
+    struct serverCallbacks *callbacks // Copied
 );
 static inline void server_deinit(struct server *self);
 static int server_run(struct server *self);

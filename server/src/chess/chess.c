@@ -158,8 +158,8 @@ static int chess_init(struct chess *self) {
         goto cleanup_none;
     }
 
-    struct server_callbacks callbacks;
-    server_callbacks_create(
+    struct serverCallbacks callbacks;
+    serverCallbacks_create(
         &callbacks,
         self,
         chess_onConnect,

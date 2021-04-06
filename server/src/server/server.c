@@ -1,5 +1,4 @@
 #include "server_client.c"
-#include "server_callbacks.c"
 
 #include "server/server.h"
 #include "base64.h"
@@ -25,7 +24,7 @@ static int server_init(
     struct server *self,
     struct fileResponse *fileResponses,
     int fileResponsesLength,
-    struct server_callbacks *callbacks
+    struct serverCallbacks *callbacks
 ) {
     self->fileResponses = fileResponses;
     self->fileResponsesLength = fileResponsesLength;

@@ -1,5 +1,6 @@
 #include "src/main.c"
 #include "src/server/server.c"
+#include "src/server/serverCallbacks.c"
 #include "src/server/fileResponse.c"
 #include "src/chess/chess.c"
 #include "src/chess/chessRoom.c"
