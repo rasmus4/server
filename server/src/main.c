@@ -3,12 +3,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 static struct chess main_chess;
 
 int main(int argc, char **argv) {
     int status;
-
+    srand(time(NULL));
     status = chess_init(&main_chess);
     if (status < 0) {
         printf("Failed to initialize chess (%d)\n", status);

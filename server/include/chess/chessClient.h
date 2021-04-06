@@ -1,8 +1,10 @@
 #pragma once
-#include "server/server.h"
+
+#include <stdbool.h>
 
 struct chessRoom;
 struct chess;
+struct server_client;
 
 struct chessClient {
     struct server_client *client;

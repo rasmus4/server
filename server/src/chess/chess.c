@@ -3,16 +3,22 @@
 #include "server/fileResponse.h"
 #include "generatedHtml.h"
 
+#include <stdlib.h>
+
 #define SELF ((struct chess *)(self))
 
 static void chess_createRoom(struct chess *self, struct chessClient *chessClient) {
-    int32_t room = 0;
-    for (; room < server_MAX_CLIENTS; ++room) {
-        if (chessRoom_isEmpty(&self->rooms[room])) break;
+    struct chessRoom *room = &self->rooms[0];
+    struct chessRoom *roomsEnd = &self->rooms[server_MAX_CLIENTS];
+    for (; room != roomsEnd; ++room) {
+        if (!chessRoom_isOpen(room)) break;
     }
     // Atleast one room is guaranteed to be empty.
-    chessClient_setRoom(chessClient, &self->rooms[room]);
-    chessRoom_setHost(&self->rooms[room], chessClient);
+    chessClient_setRoom(chessClient, room);
+
+    // Note: Relies on server_MAX_CLIENTS being power of 2!
+    int randomPart = rand() & ~(server_MAX_CLIENTS - 1);
+    chessRoom_open(room, chessClient, randomPart | room->index);
 }
 
 static int chess_onConnect(void *self, struct server_client *client) {
@@ -49,8 +55,17 @@ static int chess_handleJoin(struct chess *self, struct chessClient *chessClient,
         (message[3] << 16) |
         (message[4] << 24)
     );
-    struct chessRoom *room = &self->rooms[roomId];
-    if (chessRoom_isEmpty(room)) return 0; // Room doesn't exist.
+
+    struct chessRoom *room = &self->rooms[0];
+    struct chessRoom *roomsEnd = &self->rooms[server_MAX_CLIENTS];
+    for (;room != roomsEnd; ++room) {
+        if (
+            chessRoom_isOpen(room) &&
+            room->roomId == roomId
+        ) goto found;
+    }
+    return 0; // Doesn't exist
+    found:
     if (chessRoom_isFull(room)) return 0; // Already full.
 
     chessRoom_setGuest(room, chessClient);

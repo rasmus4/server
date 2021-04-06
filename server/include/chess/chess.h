@@ -13,6 +13,7 @@ struct chess {
     struct chessRoom rooms[server_MAX_CLIENTS];
 };
 
+// Assumes srand has been called.
 static int chess_init(struct chess *self);
 static void chess_deinit(struct chess *self);
 
