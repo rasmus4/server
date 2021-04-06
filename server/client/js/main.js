@@ -14,7 +14,7 @@ class Main {
         }
         this.onJoin = (id) => {
             this.bufferDataView.setUint8(0, ProtocolClientOp.JOIN);
-            this.bufferDataView.setInt32(1, id);
+            this.bufferDataView.setInt32(1, id, true);
             this.socket.send(this.bufferByteView.subarray(0, 5));
         };
         this.homeView = new HomeView(this.onCreate, this.onJoin);

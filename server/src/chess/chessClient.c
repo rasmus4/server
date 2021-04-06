@@ -1,20 +1,30 @@
-#include "chess.h"
-#include "protocol.h"
+#include "chess/chessClient.h"
+#include "chess/chess.h"
+#include "chess/protocol.h"
+#include "chess/chessRoom.h"
 
 #include <stdbool.h>
 
-static void chess_client_create(struct chess_client *self, struct server_client *client) {
+static void chessClient_create(struct chessClient *self, struct server_client *client) {
     self->client = client;
-    self->room = -1;
+    self->room = NULL;
 }
 
-static int chess_client_sendState(struct chess_client *self, struct chess *chess) {
-    if (self->room == -1) {
+static inline void chessClient_setRoom(struct chessClient *self, struct chessRoom *room) {
+    self->room = room;
+}
+
+static inline bool chessClient_inRoom(struct chessClient *self) {
+    return self->room;
+}
+
+static int chessClient_sendState(struct chessClient *self, struct chess *chess) {
+    if (!chessClient_inRoom(self)) {
         uint8_t buffer[1] = { protocol_HOME };
         if (server_sendWebsocketMessage(&chess->server, self->client, buffer, sizeof(buffer), false) < 0) return -1;
     } else {
         uint8_t buffer[5] = { protocol_ROOM };
-        buffer[1] = self->room;
+        buffer[1] = self->room->roomId;
         if (server_sendWebsocketMessage(&chess->server, self->client, buffer, sizeof(buffer), false) < 0) return -2;
 
         /*uint8_t buffer[66] = {0};
