@@ -4,6 +4,8 @@
 #include "chess/chessRoom.h"
 
 #include <stdbool.h>
+#include <string.h>
+#include <assert.h>
 
 static void chessClient_create(struct chessClient *self, struct server_client *client) {
     self->client = client;
@@ -18,6 +20,11 @@ static inline bool chessClient_inRoom(struct chessClient *self) {
     return self->room;
 }
 
+static inline bool chessClient_isHost(struct chessClient *self) {
+    assert(self->room);
+    return self->room->host == self;
+}
+
 static int chessClient_sendState(struct chessClient *self, struct chess *chess) {
     if (!chessClient_inRoom(self)) {
         uint8_t buffer[1] = { protocol_HOME };
@@ -25,20 +32,8 @@ static int chessClient_sendState(struct chessClient *self, struct chess *chess) 
     } else if (chessRoom_isFull(self->room)) {
         uint8_t buffer[66] = {0};
         buffer[0] = protocol_CHESS;
-        buffer[1] = 1;
-        buffer[2] = buffer[9] = protocol_ROOK;
-        buffer[3] = buffer[8] = protocol_KNIGHT;
-        buffer[4] = buffer[7] = protocol_BISHOP;
-        buffer[5] = protocol_QUEEN;
-        buffer[6] = protocol_KING;
-        for (int i = 0; i < 8; ++i) buffer[10 + i] = protocol_PAWN;
-
-        buffer[58] = buffer[65] = protocol_ROOK | protocol_WHITE_FLAG;
-        buffer[59] = buffer[64] = protocol_KNIGHT | protocol_WHITE_FLAG;
-        buffer[60] = buffer[63] = protocol_BISHOP | protocol_WHITE_FLAG;
-        buffer[61] = protocol_QUEEN | protocol_WHITE_FLAG;
-        buffer[62] = protocol_KING | protocol_WHITE_FLAG;
-        for (int i = 0; i < 8; ++i) buffer[50 + i] = protocol_PAWN | protocol_WHITE_FLAG;
+        buffer[1] = chessClient_isHost(self) ? 1 : 0;
+        memcpy(&buffer[2], &self->room->board[0], 64);
         if (server_sendWebsocketMessage(&chess->server, self->client, buffer, sizeof(buffer), false) < 0) return -2;
     } else {
         uint8_t buffer[5] = { protocol_ROOM };

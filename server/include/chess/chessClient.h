@@ -15,5 +15,6 @@ static void chessClient_create(struct chessClient *self, struct server_client *c
 
 static inline void chessClient_setRoom(struct chessClient *self, struct chessRoom *room);
 static inline bool chessClient_inRoom(struct chessClient *self);
+static inline bool chessClient_isHost(struct chessClient *self);
 
 static int chessClient_sendState(struct chessClient *self, struct chess *chess);

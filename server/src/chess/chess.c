@@ -34,7 +34,7 @@ static int chess_handleJoin(struct chess *self, struct chessClient *chessClient,
 
     struct chessRoom *room = &self->rooms[0];
     struct chessRoom *roomsEnd = &self->rooms[server_MAX_CLIENTS];
-    for (;room != roomsEnd; ++room) {
+    for (; room != roomsEnd; ++room) {
         if (
             chessRoom_isOpen(room) &&
             room->roomId == roomId

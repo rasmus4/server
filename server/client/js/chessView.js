@@ -10,22 +10,6 @@ class ChessView {
         this.selectedTile = null;
         this.setTileSize(80);
     }
-    // TODO remove
-    initBoardStateTest() {
-        this.boardState[0] = this.boardState[7] = ProtocolPieces.ROOK;
-        this.boardState[1] = this.boardState[6] = ProtocolPieces.KNIGHT;
-        this.boardState[2] = this.boardState[5] = ProtocolPieces.BISHOP;
-        this.boardState[3] = ProtocolPieces.QUEEN;
-        this.boardState[4] = ProtocolPieces.KING;
-        for (let i = 0; i < 8; ++i) this.boardState[8 + i] = ProtocolPieces.PAWN;
-
-        this.boardState[56] = this.boardState[63] = ProtocolPieces.ROOK | ProtocolPieces.WHITE_FLAG;
-        this.boardState[57] = this.boardState[62] = ProtocolPieces.KNIGHT | ProtocolPieces.WHITE_FLAG;
-        this.boardState[58] = this.boardState[61] = ProtocolPieces.BISHOP | ProtocolPieces.WHITE_FLAG;
-        this.boardState[59] = ProtocolPieces.QUEEN | ProtocolPieces.WHITE_FLAG;
-        this.boardState[60] = ProtocolPieces.KING | ProtocolPieces.WHITE_FLAG;
-        for (let i = 0; i < 8; ++i) this.boardState[48 + i] = ProtocolPieces.PAWN | ProtocolPieces.WHITE_FLAG;
-    }
     setTileSize(tileSize) {
         this.tileSize = tileSize;
         this.canvas.width = tileSize * 8;

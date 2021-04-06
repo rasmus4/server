@@ -9,6 +9,7 @@ struct chessRoom {
     int32_t roomId;
     struct chessClient *host; // NULL if room empty.
     struct chessClient *guest; // NULL if none.
+    uint8_t board[64];
 };
 
 static inline void chessRoom_create(struct chessRoom *self, int32_t index);
