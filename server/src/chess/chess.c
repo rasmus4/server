@@ -25,12 +25,8 @@ static int chess_handleCreate(struct chess *self, struct chessClient *chessClien
 
 static int chess_handleJoin(struct chess *self, struct chessClient *chessClient, uint8_t *message, int32_t messageLength) {
     if (chessClient_inRoom(chessClient)) return -1;
-    int32_t roomId = (
-        message[1] |
-        (message[2] << 8) |
-        (message[3] << 16) |
-        (message[4] << 24)
-    );
+    int32_t roomId;
+    memcpy(&roomId, &message[1], 4);
 
     struct chessRoom *room = &self->rooms[0];
     struct chessRoom *roomsEnd = &self->rooms[server_MAX_CLIENTS];

@@ -37,10 +37,7 @@ static int chessClient_sendState(struct chessClient *self, struct chess *chess) 
         if (server_sendWebsocketMessage(&chess->server, self->client, buffer, sizeof(buffer), false) < 0) return -2;
     } else {
         uint8_t buffer[5] = { protocol_ROOM };
-        buffer[1] = self->room->roomId & 0xFF;
-        buffer[2] = (self->room->roomId >> 8) & 0xFF;
-        buffer[3] = (self->room->roomId >> 16) & 0xFF;
-        buffer[4] = (self->room->roomId >> 24) & 0xFF;
+        memcpy(&buffer[1], &self->room->roomId, 4);
         if (server_sendWebsocketMessage(&chess->server, self->client, buffer, sizeof(buffer), false) < 0) return -3;
     }
     return 0;
