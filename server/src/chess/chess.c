@@ -5,45 +5,21 @@
 
 #include <stdlib.h>
 
-#define SELF ((struct chess *)(self))
-
 static void chess_createRoom(struct chess *self, struct chessClient *chessClient) {
     struct chessRoom *room = &self->rooms[0];
-    struct chessRoom *roomsEnd = &self->rooms[server_MAX_CLIENTS];
-    for (; room != roomsEnd; ++room) {
+    // Atleast one room is guaranteed to be empty.
+    for (;; ++room) {
         if (!chessRoom_isOpen(room)) break;
     }
-    // Atleast one room is guaranteed to be empty.
-    chessClient_setRoom(chessClient, room);
-
     // Note: Relies on server_MAX_CLIENTS being power of 2!
     int randomPart = rand() & ~(server_MAX_CLIENTS - 1);
     chessRoom_open(room, chessClient, randomPart | room->index);
 }
 
-static int chess_onConnect(void *self, struct server_client *client) {
-    // Complete handshake.
-    uint32_t version = protocol_VERSION;
-    if (server_sendWebsocketMessage(&SELF->server, client, (uint8_t *)&version, 4, false) < 0) return -1;
-
-    struct chessClient *chessClient = &SELF->clients[client->index];
-    chessClient_create(chessClient, client);
-    if (chessClient_sendState(chessClient, SELF) < 0) return -2;
-
-    printf("onConnect\n");
-    return 0;
-}
-
-static void chess_onDisconnect(void *self, struct server_client *client) {
-    struct chessClient *chessClient = &SELF->clients[client->index];
-    // TODO cleanup.
-    printf("onDisconnect\n");
-}
-
 static int chess_handleCreate(struct chess *self, struct chessClient *chessClient, uint8_t *message, int32_t messageLength) {
     if (chessClient_inRoom(chessClient)) return -1;
-    chess_createRoom(SELF, chessClient);
-    if (chessClient_sendState(chessClient, SELF) < 0) return -2;
+    chess_createRoom(self, chessClient);
+    if (chessClient_sendState(chessClient, self) < 0) return -2;
     return 0;
 }
 
@@ -64,22 +40,42 @@ static int chess_handleJoin(struct chess *self, struct chessClient *chessClient,
             room->roomId == roomId
         ) goto found;
     }
-    return 0; // Doesn't exist
+    return 0; // Doesn't exist.
     found:
     if (chessRoom_isFull(room)) return 0; // Already full.
 
-    chessRoom_setGuest(room, chessClient);
-    chessClient_setRoom(chessClient, room);
+    chessRoom_addGuest(room, chessClient);
 
-    if (chessClient_sendState(room->host, SELF) < 0) {
+    if (chessClient_sendState(room->host, self) < 0) {
         server_closeClient(&self->server, room->host->client);
     }
-    if (chessClient_sendState(chessClient, SELF) < 0) return -2;
+    if (chessClient_sendState(chessClient, self) < 0) return -2;
     return 0;
 }
 
 static int chess_handleBack(struct chess *self, struct chessClient *chessClient, uint8_t *message, int32_t messageLength) {
     return 0;
+}
+
+#define SELF ((struct chess *)(self))
+
+static int chess_onConnect(void *self, struct server_client *client) {
+    // Complete handshake.
+    uint32_t version = protocol_VERSION;
+    if (server_sendWebsocketMessage(&SELF->server, client, (uint8_t *)&version, 4, false) < 0) return -1;
+
+    struct chessClient *chessClient = &SELF->clients[client->index];
+    chessClient_create(chessClient, client);
+    if (chessClient_sendState(chessClient, SELF) < 0) return -2;
+
+    printf("onConnect\n");
+    return 0;
+}
+
+static void chess_onDisconnect(void *self, struct server_client *client) {
+    struct chessClient *chessClient = &SELF->clients[client->index];
+    // TODO cleanup.
+    printf("onDisconnect\n");
 }
 
 static int chess_onMessage(void *self, struct server_client *client, uint8_t *message, int32_t messageLength, bool isText) {
@@ -95,6 +91,8 @@ static int chess_onMessage(void *self, struct server_client *client, uint8_t *me
 
     return -1;
 }
+
+#undef SELF
 
 static int chess_initFileResponse(struct chess *self) {
     int status;

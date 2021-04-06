@@ -1,3 +1,3 @@
 set -e
-gcc -fsanitize=undefined -Wpedantic -Wall -o server -Iinclude -Iclient server.c
+gcc -fsanitize=undefined -g -Wpedantic -Wall -o server -Iinclude -Iclient server.c
 echo "Server build success"
