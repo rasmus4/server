@@ -1,4 +1,3 @@
-"use strict";
 class Main {
     constructor() {
         this.currentView = null;
