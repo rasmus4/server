@@ -4,7 +4,7 @@ class ChessView {
 
         this.div = document.getElementById("chessView");
         this.canvas = document.getElementById("chessViewCanvas");
-        this.chessStatusSpan = document.getElementById("chessStatus");
+        this.statusSpan = document.getElementById("chessViewStatus");
         this.context = this.canvas.getContext("2d");
         this.board = new Uint8Array(64); // left->right, bottom->top
         this.whitesTurn = undefined;
@@ -59,7 +59,7 @@ class ChessView {
     draw() {
         for (let x = 0; x < 8; ++x) {
             for (let y = 0; y < 8; ++y) {
-                this.context.fillStyle = ((x + y) % 2 == 0) ? "#E3C497" : "#69441B";
+                this.context.fillStyle = ((x + y) % 2 == 1) ? "#E3C497" : "#69441B";
                 let baseX = x * this.tileSize;
                 let baseY = (7 - y) * this.tileSize;
                 this.context.fillRect(baseX, baseY, this.tileSize, this.tileSize);
@@ -201,11 +201,11 @@ class ChessView {
             }
         }
         if (this.winner != ProtocolWinner.NO_WIN) {
-            if (this.winner == ProtocolWinner.WHITE_WIN) this.chessStatusSpan.textContent = "White wins!";
-            else this.chessStatusSpan.textContent = "Black wins!";
+            if (this.winner == ProtocolWinner.WHITE_WIN) this.statusSpan.textContent = "White wins!";
+            else this.statusSpan.textContent = "Black wins!";
         } else {
-            if (this.whitesTurn) this.chessStatusSpan.textContent = "Whites turn";
-            else this.chessStatusSpan.textContent = "Blacks turn";
+            if (this.whitesTurn) this.statusSpan.textContent = "Whites turn";
+            else this.statusSpan.textContent = "Blacks turn";
         }
     }
 }
