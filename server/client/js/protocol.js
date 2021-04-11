@@ -2,20 +2,27 @@ const protocolVersion = 1;
 
 const ProtocolClientOp = {
     // Chess
-    MOVE: 1,
+    MOVE: 0,
     // Home
-    CREATE: 2,
-    JOIN: 3,
-    BACK: 4
+    CREATE: 1,
+    JOIN: 2,
+    BACK: 3
 };
 
 const ProtocolServerOp = {
-    HOME: 1,
-    ROOM: 2,
-    CHESS: 3
+    HOME: 0,
+    ROOM: 1,
+    CHESS: 2
+};
+
+const ProtocolWinner = {
+    NO_WIN: 0,
+    WHITE_WIN: 1,
+    BLACK_WIN: 2
 };
 
 const ProtocolPieces = {
+    NO_PIECE: 0,
     PAWN: 1,
     BISHOP: 2,
     KNIGHT: 3,

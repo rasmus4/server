@@ -25,20 +25,26 @@ static inline bool chessClient_isHost(struct chessClient *self) {
     return self->room->host == self;
 }
 
-static int chessClient_sendState(struct chessClient *self, struct chess *chess) {
+static int32_t chessClient_writeState(struct chessClient *self, struct chess *chess, uint8_t *buffer) {
     if (!chessClient_inRoom(self)) {
-        uint8_t buffer[1] = { protocol_HOME };
-        if (server_sendWebsocketMessage(&chess->server, self->client, buffer, sizeof(buffer), false) < 0) return -1;
-    } else if (chessRoom_isFull(self->room)) {
-        uint8_t buffer[66] = {0};
-        buffer[0] = protocol_CHESS;
-        buffer[1] = chessClient_isHost(self) ? 1 : 0;
-        memcpy(&buffer[2], &self->room->board[0], 64);
-        if (server_sendWebsocketMessage(&chess->server, self->client, buffer, sizeof(buffer), false) < 0) return -2;
-    } else {
-        uint8_t buffer[5] = { protocol_ROOM };
-        memcpy(&buffer[1], &self->room->roomId, 4);
-        if (server_sendWebsocketMessage(&chess->server, self->client, buffer, sizeof(buffer), false) < 0) return -3;
+        buffer[0] = protocol_HOME;
+        return 1;
     }
-    return 0;
+    if (chessRoom_isFull(self->room)) {
+        buffer[0] = protocol_CHESS;
+        buffer[1] = chessRoom_isHostsTurn(self->room) ? 1 : 0;
+        buffer[2] = chessRoom_getWinner(self->room);
+        if (chessClient_isHost(self)) {
+            memcpy(&buffer[3], &self->room->board[0], 64);
+        } else {
+            // Flip the board for black.
+            for (int i = 0; i < 64; ++i) {
+                buffer[66 - i] = self->room->board[i];
+            }
+        }
+        return chessClient_writeState_MAX;
+    }
+    buffer[0] = protocol_ROOM;
+    memcpy(&buffer[1], &self->room->roomId, 4);
+    return 5;
 }

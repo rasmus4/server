@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 
 struct chessRoom;
 struct chess;
@@ -17,4 +18,6 @@ static inline void chessClient_setRoom(struct chessClient *self, struct chessRoo
 static inline bool chessClient_inRoom(struct chessClient *self);
 static inline bool chessClient_isHost(struct chessClient *self);
 
-static int chessClient_sendState(struct chessClient *self, struct chess *chess);
+#define chessClient_writeState_MAX 67
+// Returns length written, max `chessClient_writeState_MAX` bytes.
+static int32_t chessClient_writeState(struct chessClient *self, struct chess *chess, uint8_t *buffer);

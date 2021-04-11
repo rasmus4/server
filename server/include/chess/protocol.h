@@ -3,19 +3,26 @@
 #define protocol_VERSION 1
 
 enum protocol_clientOp {
-    protocol_MOVE = 1,
-    protocol_CREATE = 2,
-    protocol_JOIN = 3,
-    protocol_BACK = 4
+    protocol_MOVE = 0,
+    protocol_CREATE = 1,
+    protocol_JOIN = 2,
+    protocol_BACK = 3
 };
 
 enum protocol_serverOp {
-    protocol_HOME = 1,
-    protocol_ROOM = 2,
-    protocol_CHESS = 3
+    protocol_HOME = 0,
+    protocol_ROOM = 1,
+    protocol_CHESS = 2
+};
+
+enum protocol_winner {
+    protocol_NO_WIN = 0,
+    protocol_WHITE_WIN = 1,
+    protocol_BLACK_WIN = 2
 };
 
 enum protocol_pieces {
+    protocol_NO_PIECE = 0,
     protocol_PAWN = 1,
     protocol_BISHOP = 2,
     protocol_KNIGHT = 3,

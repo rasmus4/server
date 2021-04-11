@@ -5,6 +5,13 @@
 
 #include <stdlib.h>
 
+static int chess_sendClientState(struct chess *self, struct chessClient *chessClient) {
+    static uint8_t buffer[chessClient_writeState_MAX];
+    int32_t length = chessClient_writeState(chessClient, self, &buffer[0]);
+    if (server_sendWebsocketMessage(&self->server, chessClient->client, &buffer[0], length, false) < 0) return -1;
+    return 0;
+}
+
 static void chess_createRoom(struct chess *self, struct chessClient *chessClient) {
     struct chessRoom *room = &self->rooms[0];
     // Atleast one room is guaranteed to be empty.
@@ -14,17 +21,19 @@ static void chess_createRoom(struct chess *self, struct chessClient *chessClient
     // Note: Relies on server_MAX_CLIENTS being power of 2!
     int randomPart = rand() & ~(server_MAX_CLIENTS - 1);
     chessRoom_open(room, chessClient, randomPart | room->index);
+    chessClient_setRoom(chessClient, room);
 }
 
 static int chess_handleCreate(struct chess *self, struct chessClient *chessClient, uint8_t *message, int32_t messageLength) {
     if (chessClient_inRoom(chessClient)) return -1;
     chess_createRoom(self, chessClient);
-    if (chessClient_sendState(chessClient, self) < 0) return -2;
+    if (chess_sendClientState(self, chessClient) < 0) return -2;
     return 0;
 }
 
 static int chess_handleJoin(struct chess *self, struct chessClient *chessClient, uint8_t *message, int32_t messageLength) {
-    if (chessClient_inRoom(chessClient)) return -1;
+    if (messageLength != 5) return -1;
+    if (chessClient_inRoom(chessClient)) return -2;
     int32_t roomId;
     memcpy(&roomId, &message[1], 4);
 
@@ -40,12 +49,40 @@ static int chess_handleJoin(struct chess *self, struct chessClient *chessClient,
     found:
     if (chessRoom_isFull(room)) return 0; // Already full.
 
-    chessRoom_addGuest(room, chessClient);
+    chessRoom_setGuest(room, chessClient);
+    chessClient_setRoom(chessClient, room);
 
-    if (chessClient_sendState(room->host, self) < 0) {
+    if (chess_sendClientState(self, room->host) < 0) {
         server_closeClient(&self->server, room->host->client);
     }
-    if (chessClient_sendState(chessClient, self) < 0) return -2;
+    if (chess_sendClientState(self, chessClient) < 0) return -3;
+    return 0;
+}
+
+static int chess_handleMove(struct chess *self, struct chessClient *chessClient, uint8_t *message, int32_t messageLength) {
+    if (messageLength != 5) return -1;
+    if (!chessClient_inRoom(chessClient)) return -2;
+
+    struct chessRoom *room = chessClient->room;
+    if (!chessRoom_isFull(room)) return -3;
+
+    bool isHost = chessClient_isHost(chessClient);
+    if (isHost != chessRoom_isHostsTurn(chessClient->room)) return 0; // Not players turn.
+
+    int32_t fromX = message[1];
+    int32_t fromY = message[2];
+    int32_t toX = message[3];
+    int32_t toY = message[4];
+
+    if (chessRoom_isMoveValid(room, isHost, fromX, fromY, toX, toY)) {
+        chessRoom_doMove(room, isHost, fromX, fromY, toX, toY);
+
+        struct chessClient *opponent = isHost ? room->guest : room->host;
+        if (chess_sendClientState(self, opponent) < 0) {
+            server_closeClient(&self->server, opponent->client);
+        }
+        if (chess_sendClientState(self, chessClient) < 0) return -4;
+    }
     return 0;
 }
 
@@ -62,7 +99,7 @@ static int chess_onConnect(void *self, struct server_client *client) {
 
     struct chessClient *chessClient = &SELF->clients[client->index];
     chessClient_create(chessClient, client);
-    if (chessClient_sendState(chessClient, SELF) < 0) return -2;
+    if (chess_sendClientState(SELF, chessClient) < 0) return -2;
 
     printf("onConnect\n");
     return 0;
@@ -82,6 +119,7 @@ static int chess_onMessage(void *self, struct server_client *client, uint8_t *me
     switch (message[0]) {
         case protocol_CREATE: return chess_handleCreate(SELF, chessClient, message, messageLength);
         case protocol_JOIN:   return chess_handleJoin(SELF, chessClient, message, messageLength);
+        case protocol_MOVE:   return chess_handleMove(SELF, chessClient, message, messageLength);
         case protocol_BACK:   return chess_handleBack(SELF, chessClient, message, messageLength);
     }
 

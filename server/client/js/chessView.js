@@ -4,9 +4,10 @@ class ChessView {
 
         this.div = document.getElementById("chessView");
         this.canvas = document.getElementById("chessViewCanvas");
+        this.chessStatusSpan = document.getElementById("chessStatus");
         this.context = this.canvas.getContext("2d");
-        this.boardState = new Uint8Array(64); // left->right, top->bottom
-        this.isWhite = undefined;
+        this.board = new Uint8Array(64); // left->right, bottom->top
+        this.whitesTurn = undefined;
         this.selectedTile = null;
         this.setTileSize(80);
     }
@@ -25,7 +26,7 @@ class ChessView {
             if (event.button === 0) {
                 let tile = {
                     x: Math.trunc(event.offsetX / this.tileSize),
-                    y: Math.trunc(event.offsetY / this.tileSize),
+                    y: 7 - Math.trunc(event.offsetY / this.tileSize)
                 };
                 if (this.selectedTile === null) {
                     this.selectedTile = tile;
@@ -45,22 +46,22 @@ class ChessView {
         this.div.classList.add("hiddenView");
     }
     update(dataView, offset) {
-        this.isWhite = Boolean(dataView.getUint8(offset++));
+        this.whitesTurn = Boolean(dataView.getUint8(offset++));
+        this.winner = dataView.getUint8(offset++);
         for (let i = 0; i < 64; ++i) {
-            this.boardState[i] = dataView.getUint8(offset + i);
+            this.board[i] = dataView.getUint8(offset + i);
         }
         this.draw();
     }
-    getBoardStateIndex(x, y) {
-        if (this.isWhite) return y * 8 + x;
-        return 63 - (y * 8) - x;
+    getBoardIndex(x, y) {
+        return y * 8 + x;
     }
     draw() {
         for (let x = 0; x < 8; ++x) {
             for (let y = 0; y < 8; ++y) {
                 this.context.fillStyle = ((x + y) % 2 == 0) ? "#E3C497" : "#69441B";
                 let baseX = x * this.tileSize;
-                let baseY = y * this.tileSize;
+                let baseY = (7 - y) * this.tileSize;
                 this.context.fillRect(baseX, baseY, this.tileSize, this.tileSize);
 
                 if (this.selectedTile !== null && x === this.selectedTile.x && y === this.selectedTile.y) {
@@ -70,7 +71,7 @@ class ChessView {
                     this.context.globalAlpha = 1.0;
                 }
                 
-                let piece = this.boardState[this.getBoardStateIndex(x, y)];
+                let piece = this.board[this.getBoardIndex(x, y)];
                 if (piece !== 0) {
                     if (piece & ProtocolPieces.WHITE_FLAG) {
                         this.context.fillStyle = "#FFFFFF";
@@ -198,6 +199,13 @@ class ChessView {
                     }
                 }
             }
+        }
+        if (this.winner != ProtocolWinner.NO_WIN) {
+            if (this.winner == ProtocolWinner.WHITE_WIN) this.chessStatusSpan.textContent = "White wins!";
+            else this.chessStatusSpan.textContent = "Black wins!";
+        } else {
+            if (this.whitesTurn) this.chessStatusSpan.textContent = "Whites turn";
+            else this.chessStatusSpan.textContent = "Blacks turn";
         }
     }
 }
