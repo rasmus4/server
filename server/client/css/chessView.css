@@ -1,4 +1,8 @@
 #chessViewStatus {
-    color: red;
     display: block;
+}
+
+#chessViewGame {
+    text-align: center;
+    width: min-content;
 }
