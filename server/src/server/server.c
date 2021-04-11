@@ -337,7 +337,6 @@ static int server_run(struct server *self) {
                 struct server_client *client = (struct server_client *)self->epollEvents[i].data.ptr;
                 int status = server_handleClient(self, client);
                 if (status < 0) printf("Error handling client! (%d)\n", status);
-                else printf("Handled client! (%d)\n", status);
             }
         }
     }

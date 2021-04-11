@@ -18,6 +18,7 @@ struct chessRoom {
 static inline void chessRoom_create(struct chessRoom *self, int32_t index);
 
 static inline void chessRoom_open(struct chessRoom *self, struct chessClient *host, int32_t roomId);
+static inline void chessRoom_close(struct chessRoom *self);
 static inline void chessRoom_setGuest(struct chessRoom *self, struct chessClient *guest);
 
 static inline bool chessRoom_isOpen(struct chessRoom *self);

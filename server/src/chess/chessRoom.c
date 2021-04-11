@@ -64,16 +64,20 @@ static inline int32_t chessRoom_distance(int32_t fromX, int32_t fromY, int32_t t
 
 static inline void chessRoom_create(struct chessRoom *self, int32_t index) {
     self->index = index;
-    self->host = NULL;
-    self->guest = NULL;
-    self->hostsTurn = true;
+    chessRoom_close(self);
 }
 
 static inline void chessRoom_open(struct chessRoom *self, struct chessClient *host, int32_t roomId) {
     self->host = host;
     self->roomId = roomId;
     self->winner = protocol_NO_WIN;
+    self->hostsTurn = true;
     chessRoom_initBoard(self);
+}
+
+static inline void chessRoom_close(struct chessRoom *self) {
+    self->host = NULL;
+    self->guest = NULL;
 }
 
 static inline void chessRoom_setGuest(struct chessRoom *self, struct chessClient *guest) {

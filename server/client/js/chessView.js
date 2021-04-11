@@ -1,10 +1,12 @@
 class ChessView {
-    constructor(onMove) {
+    constructor(onMove, onBack) {
         this.onMove = onMove;
+        this.onBack = onBack;
 
         this.div = document.getElementById("chessView");
         this.canvas = document.getElementById("chessViewCanvas");
         this.statusSpan = document.getElementById("chessViewStatus");
+        this.backButton = document.getElementById("chessViewBack");
         this.context = this.canvas.getContext("2d");
         this.board = new Uint8Array(64); // left->right, bottom->top
         this.whitesTurn = undefined;
@@ -39,10 +41,17 @@ class ChessView {
         }
         this.canvas.addEventListener("mousedown", this.onMousedown);
 
+        this.onBackClicked = (event) => {
+            this.onBack();
+        }
+        this.backButton.addEventListener("click", this.onBackClicked);
+
         this.div.classList.remove("hiddenView");
     }
     close() {
         this.canvas.removeEventListener("mousedown", this.onMousedown);
+        this.backButton.removeEventListener("click", this.onBackClicked);
+        
         this.div.classList.add("hiddenView");
     }
     update(dataView, offset) {

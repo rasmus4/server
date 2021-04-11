@@ -24,6 +24,19 @@ static void chess_createRoom(struct chess *self, struct chessClient *chessClient
     chessClient_setRoom(chessClient, room);
 }
 
+static void chess_leaveRoom(struct chess *self, struct chessClient *chessClient) {
+    struct chessRoom *room = chessClient->room;
+    if (chessRoom_isFull(room)) {
+        struct chessClient *opponent = chessClient_isHost(chessClient) ? room->guest : room->host;
+        chessClient_unsetRoom(opponent);
+        if (chess_sendClientState(self, opponent) < 0) {
+            server_closeClient(&self->server, opponent->client);
+        }
+    }
+    chessClient_unsetRoom(chessClient);
+    chessRoom_close(room);
+}
+
 static int chess_handleCreate(struct chess *self, struct chessClient *chessClient, uint8_t *message, int32_t messageLength) {
     if (chessClient_inRoom(chessClient)) return -1;
     chess_createRoom(self, chessClient);
@@ -87,6 +100,9 @@ static int chess_handleMove(struct chess *self, struct chessClient *chessClient,
 }
 
 static int chess_handleBack(struct chess *self, struct chessClient *chessClient, uint8_t *message, int32_t messageLength) {
+    if (!chessClient_inRoom(chessClient)) return -1;
+    chess_leaveRoom(self, chessClient);
+    if (chess_sendClientState(self, chessClient) < 0) return -2;
     return 0;
 }
 
@@ -100,19 +116,16 @@ static int chess_onConnect(void *self, struct server_client *client) {
     struct chessClient *chessClient = &SELF->clients[client->index];
     chessClient_create(chessClient, client);
     if (chess_sendClientState(SELF, chessClient) < 0) return -2;
-
-    printf("onConnect\n");
     return 0;
 }
 
 static void chess_onDisconnect(void *self, struct server_client *client) {
     struct chessClient *chessClient = &SELF->clients[client->index];
-    // TODO cleanup.
-    printf("onDisconnect\n");
+    if (!chessClient_inRoom(chessClient)) return;
+    chess_leaveRoom(self, chessClient);
 }
 
 static int chess_onMessage(void *self, struct server_client *client, uint8_t *message, int32_t messageLength, bool isText) {
-    printf("onMessage %.*s\n", (int)messageLength, message);
     struct chessClient *chessClient = &SELF->clients[client->index];
     
     if (messageLength < 1) return -1;

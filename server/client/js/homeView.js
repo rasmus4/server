@@ -8,6 +8,7 @@ class HomeView {
         this.joinId = document.getElementById("homeViewJoinId");
     }
     open() {
+        this.joinId.value = "";
         this.onCreateClicked = (event) => {
             this.onCreate();
         }

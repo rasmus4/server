@@ -9,11 +9,15 @@
 
 static void chessClient_create(struct chessClient *self, struct server_client *client) {
     self->client = client;
-    self->room = NULL;
+    chessClient_unsetRoom(self);
 }
 
 static inline void chessClient_setRoom(struct chessClient *self, struct chessRoom *room) {
     self->room = room;
+}
+
+static inline void chessClient_unsetRoom(struct chessClient *self) {
+    self->room = NULL;
 }
 
 static inline bool chessClient_inRoom(struct chessClient *self) {

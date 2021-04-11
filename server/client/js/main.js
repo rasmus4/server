@@ -25,12 +25,13 @@ class Main {
             this.bufferDataView.setUint8(4, to.y);
             this.socket.send(this.bufferByteView.subarray(0, 5));
         }
-        this.chessView = new ChessView(this.onMove);
-        this.connectingView = new ConnectingView();
         this.onBack = () => {
             this.bufferDataView.setUint8(0, ProtocolClientOp.BACK);
             this.socket.send(this.bufferByteView.subarray(0, 1));
         }
+        this.chessView = new ChessView(this.onMove, this.onBack);
+        this.connectingView = new ConnectingView();
+        
         this.roomView = new RoomView(this.onBack);
     }
     setView(newView) {
