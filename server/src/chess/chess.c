@@ -87,8 +87,8 @@ static int chess_handleMove(struct chess *self, struct chessClient *chessClient,
     int32_t toX = message[3];
     int32_t toY = message[4];
 
-    if (chessRoom_isMoveValid(room, isHost, fromX, fromY, toX, toY)) {
-        chessRoom_doMove(room, isHost, fromX, fromY, toX, toY);
+    if (chessRoom_isMoveValid(room, fromX, fromY, toX, toY, isHost)) {
+        chessRoom_doMove(room, fromX, fromY, toX, toY, isHost);
 
         struct chessClient *opponent = isHost ? room->guest : room->host;
         if (chess_sendClientState(self, opponent) < 0) {

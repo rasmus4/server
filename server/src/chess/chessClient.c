@@ -35,15 +35,18 @@ static int32_t chessClient_writeState(struct chessClient *self, struct chess *ch
         return 1;
     }
     if (chessRoom_isFull(self->room)) {
+        bool isHost = chessClient_isHost(self);
         buffer[0] = protocol_CHESS;
         buffer[1] = chessRoom_isHostsTurn(self->room) ? 1 : 0;
-        buffer[2] = chessRoom_getWinner(self->room);
-        if (chessClient_isHost(self)) {
-            memcpy(&buffer[3], &self->room->board[0], 64);
+        buffer[2] = chessRoom_winner(self->room);
+        buffer[3] = chessRoom_lastMoveFromIndex(self->room, isHost);
+        buffer[4] = chessRoom_lastMoveToIndex(self->room, isHost);
+        if (isHost) {
+            memcpy(&buffer[5], &self->room->board[0], 64);
         } else {
             // Flip the board for black.
             for (int i = 0; i < 64; ++i) {
-                buffer[66 - i] = self->room->board[i];
+                buffer[5 + 63 - i] = self->room->board[i];
             }
         }
         return chessClient_writeState_MAX;

@@ -72,7 +72,7 @@ class Main {
                     return;
                 }
 
-                let op = receiveData.getUint8(0, true);
+                let op = receiveData.getUint8(0);
                 switch (op) {
                     case ProtocolServerOp.HOME:
                         this.homeView.update(receiveData, 1);

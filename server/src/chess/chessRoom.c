@@ -21,16 +21,28 @@ static void chessRoom_initBoard(struct chessRoom *self) {
     self->board[59] = protocol_QUEEN;
     self->board[60] = protocol_KING;
     for (int i = 0; i < 8; ++i) self->board[48 + i] = protocol_PAWN;
+
+    self->lastMoveFromIndex = -1;
+    self->lastMoveToIndex = -1;
 }
 
-static inline int32_t chessRoom_xyToIndex(bool hostsPov, int32_t x, int32_t y) {
-    if (hostsPov) {
-        return y * 8 + x;
-    }
-    return 63 - (y * 8) - x;
+static inline int32_t chessRoom_convertIndex(int32_t index, bool hostsPov) {
+    return hostsPov ? index : 63 - index;
 }
 
-static inline bool chessRoom_diagonalAndFree(struct chessRoom *self, bool hostsPov, int32_t fromX, int32_t fromY, int32_t toX, int32_t toY) {
+static inline int32_t chessRoom_xyToIndex(int32_t x, int32_t y, bool hostsPov) {
+    return chessRoom_convertIndex(y * 8 + x, hostsPov);
+}
+
+static inline int32_t chessRoom_lastMoveFromIndex(struct chessRoom *self, bool hostsPov) {
+    return chessRoom_convertIndex(self->lastMoveFromIndex, hostsPov);
+}
+
+static inline int32_t chessRoom_lastMoveToIndex(struct chessRoom *self, bool hostsPov) {
+    return chessRoom_convertIndex(self->lastMoveToIndex, hostsPov);
+}
+
+static inline bool chessRoom_diagonalAndFree(struct chessRoom *self, int32_t fromX, int32_t fromY, int32_t toX, int32_t toY, bool hostsPov) {
     if (abs(toX - fromX) != abs(toY - fromY)) return false;
     int32_t signX = toX > fromX ? 1 : -1;
     int32_t signY = toY > fromY ? 1 : -1;
@@ -40,7 +52,7 @@ static inline bool chessRoom_diagonalAndFree(struct chessRoom *self, bool hostsP
     return true;
 }
 
-static inline bool chessRoom_straightAndFree(struct chessRoom *self, bool hostsPov, int32_t fromX, int32_t fromY, int32_t toX, int32_t toY) {
+static inline bool chessRoom_straightAndFree(struct chessRoom *self, int32_t fromX, int32_t fromY, int32_t toX, int32_t toY, bool hostsPov) {
     if (toX != fromX && toY == fromY) {
         int signX = toX > fromX ? 1 : -1;
         for (fromX += signX; fromX != toX; fromX += signX) {
@@ -96,11 +108,11 @@ static inline bool chessRoom_isHostsTurn(struct chessRoom *self) {
     return self->hostsTurn; 
 }
 
-static inline enum protocol_winner chessRoom_getWinner(struct chessRoom *self) {
+static inline enum protocol_winner chessRoom_winner(struct chessRoom *self) {
     return self->winner;
 }
 
-static bool chessRoom_isMoveValid(struct chessRoom *self, bool hostsPov, int32_t fromX, int32_t fromY, int32_t toX, int32_t toY) {
+static bool chessRoom_isMoveValid(struct chessRoom *self, int32_t fromX, int32_t fromY, int32_t toX, int32_t toY, bool hostsPov) {
     if (self->winner != protocol_NO_WIN) return false;
 
     if (
@@ -112,12 +124,12 @@ static bool chessRoom_isMoveValid(struct chessRoom *self, bool hostsPov, int32_t
 
     if (fromX == toX && fromY == toY) return false;
 
-    uint8_t piece = chessRoom_getPieceAt(self, hostsPov, fromX, fromY);
+    uint8_t piece = chessRoom_pieceAt(self, fromX, fromY, hostsPov);
     if (piece == protocol_NO_PIECE) return false;
     bool hostsPiece = piece & protocol_WHITE_FLAG;
     if (hostsPiece != hostsPov) return false;
 
-    uint8_t destPiece = chessRoom_getPieceAt(self, hostsPov, toX, toY);
+    uint8_t destPiece = chessRoom_pieceAt(self, toX, toY, hostsPov);
     if (destPiece != protocol_NO_PIECE) {
         bool hostsDestPiece = destPiece & protocol_WHITE_FLAG;
         if (hostsDestPiece == hostsPov) return false; // Can't take ur own pieces.
@@ -126,11 +138,11 @@ static bool chessRoom_isMoveValid(struct chessRoom *self, bool hostsPov, int32_t
     switch (piece & protocol_PIECE_MASK) {
         case protocol_KING: return chessRoom_distance(fromX, fromY, toX, toY) == 1;
         case protocol_QUEEN: return (
-            chessRoom_diagonalAndFree(self, hostsPov, fromX, fromY, toX, toY) ||
-            chessRoom_straightAndFree(self, hostsPov, fromX, fromY, toX, toY)
+            chessRoom_diagonalAndFree(self, fromX, fromY, toX, toY, hostsPov) ||
+            chessRoom_straightAndFree(self, fromX, fromY, toX, toY, hostsPov)
         );
-        case protocol_BISHOP: return chessRoom_diagonalAndFree(self, hostsPov, fromX, fromY, toX, toY);
-        case protocol_ROOK: return chessRoom_straightAndFree(self, hostsPov, fromX, fromY, toX, toY);
+        case protocol_BISHOP: return chessRoom_diagonalAndFree(self, fromX, fromY, toX, toY, hostsPov);
+        case protocol_ROOK: return chessRoom_straightAndFree(self, fromX, fromY, toX, toY, hostsPov);
         case protocol_KNIGHT: {
             int32_t dxAbs = abs(toX - fromX);
             int32_t dyAbs = abs(toY - fromY);
@@ -150,24 +162,26 @@ static bool chessRoom_isMoveValid(struct chessRoom *self, bool hostsPov, int32_t
     }
 }
 
-static void chessRoom_doMove(struct chessRoom *self, bool hostsPov, int32_t fromX, int32_t fromY, int32_t toX, int32_t toY) {
-    int32_t fromIndex = chessRoom_xyToIndex(hostsPov, fromX, fromY);
+static void chessRoom_doMove(struct chessRoom *self, int32_t fromX, int32_t fromY, int32_t toX, int32_t toY, bool hostsPov) {
+    int32_t fromIndex = chessRoom_xyToIndex(fromX, fromY, hostsPov);
 
     uint8_t piece = self->board[fromIndex];
     uint8_t destPiece;
     if (toY == 7 && (piece & protocol_PIECE_MASK) == protocol_PAWN) destPiece = protocol_QUEEN | (piece & protocol_WHITE_FLAG); // Promotion
     else destPiece = piece;
 
-    int32_t toIndex = chessRoom_xyToIndex(hostsPov, toX, toY);
+    int32_t toIndex = chessRoom_xyToIndex(toX, toY, hostsPov);
     if ((self->board[toIndex] & protocol_PIECE_MASK) == protocol_KING) { // Win
         if (self->board[toIndex] & protocol_WHITE_FLAG) self->winner = protocol_BLACK_WIN;
         else self->winner = protocol_WHITE_WIN;
     }
     self->board[toIndex] = destPiece;
     self->board[fromIndex] = protocol_NO_PIECE;
+    self->lastMoveFromIndex = fromIndex;
+    self->lastMoveToIndex = toIndex;
     self->hostsTurn = !self->hostsTurn;
 }
 
-static uint8_t chessRoom_getPieceAt(struct chessRoom *self, bool hostsPov, int32_t x, int32_t y) {
-    return self->board[chessRoom_xyToIndex(hostsPov, x, y)];
+static uint8_t chessRoom_pieceAt(struct chessRoom *self, int32_t x, int32_t y, bool hostsPov) {
+    return self->board[chessRoom_xyToIndex(x, y, hostsPov)];
 }

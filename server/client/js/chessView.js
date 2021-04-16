@@ -9,7 +9,6 @@ class ChessView {
         this.backButton = document.getElementById("chessViewBack");
         this.context = this.canvas.getContext("2d");
         this.board = new Uint8Array(64); // left->right, bottom->top
-        this.whitesTurn = undefined;
         this.selectedTile = null;
         this.setTileSize(80);
     }
@@ -57,6 +56,8 @@ class ChessView {
     update(dataView, offset) {
         this.whitesTurn = Boolean(dataView.getUint8(offset++));
         this.winner = dataView.getUint8(offset++);
+        this.lastMoveFromIndex = dataView.getUint8(offset++);
+        this.lastMoveToIndex = dataView.getUint8(offset++);
         for (let i = 0; i < 64; ++i) {
             this.board[i] = dataView.getUint8(offset + i);
         }
@@ -73,14 +74,16 @@ class ChessView {
                 let baseY = (7 - y) * this.tileSize;
                 this.context.fillRect(baseX, baseY, this.tileSize, this.tileSize);
 
-                if (this.selectedTile !== null && x === this.selectedTile.x && y === this.selectedTile.y) {
-                    this.context.globalAlpha = 0.2;
+                let index = this.getBoardIndex(x, y);
+                let isSelectedTile = (this.selectedTile !== null && x === this.selectedTile.x && y === this.selectedTile.y);
+                if (isSelectedTile || (index == this.lastMoveFromIndex || index == this.lastMoveToIndex)) {
+                    this.context.globalAlpha = isSelectedTile ? 0.2 : 0.1;
                     this.context.fillStyle = "#00FF00";
                     this.context.fillRect(baseX, baseY, this.tileSize, this.tileSize);
                     this.context.globalAlpha = 1.0;
                 }
                 
-                let piece = this.board[this.getBoardIndex(x, y)];
+                let piece = this.board[index];
                 if (piece !== 0) {
                     if (piece & ProtocolPieces.WHITE_FLAG) {
                         this.context.fillStyle = "#FFFFFF";
