@@ -47,7 +47,7 @@ static inline bool chessRoom_diagonalAndFree(struct chessRoom *self, int32_t fro
     int32_t signX = toX > fromX ? 1 : -1;
     int32_t signY = toY > fromY ? 1 : -1;
     for (fromX += signX, fromY += signY; fromX != toX; fromX += signX, fromY += signY) {
-        if (self->board[chessRoom_xyToIndex(hostsPov, fromX, fromY)] != protocol_NO_PIECE) return false;
+        if (self->board[chessRoom_xyToIndex(fromX, fromY, hostsPov)] != protocol_NO_PIECE) return false;
     }
     return true;
 }
@@ -56,12 +56,12 @@ static inline bool chessRoom_straightAndFree(struct chessRoom *self, int32_t fro
     if (toX != fromX && toY == fromY) {
         int signX = toX > fromX ? 1 : -1;
         for (fromX += signX; fromX != toX; fromX += signX) {
-            if (self->board[chessRoom_xyToIndex(hostsPov, fromX, fromY)] != protocol_NO_PIECE) return false;
+            if (self->board[chessRoom_xyToIndex(fromX, fromY, hostsPov)] != protocol_NO_PIECE) return false;
         }
     } else if (toY != fromY && toX == fromX) {
         int signY = toY > fromY ? 1 : -1;
         for (fromY += signY; fromY != toY; fromY += signY) {
-            if (self->board[chessRoom_xyToIndex(hostsPov, fromX, fromY)] != protocol_NO_PIECE) return false;
+            if (self->board[chessRoom_xyToIndex(fromX, fromY, hostsPov)] != protocol_NO_PIECE) return false;
         }
     } else return false;
     return true;
