@@ -113,25 +113,35 @@ static int32_t server_findLineEnd(uint8_t *buffer, int32_t index, int32_t end) {
 }
 
 static int server_sendWebsocketMessage(struct server *self, struct server_client *client, uint8_t *message, int32_t messageLength, bool isText) {
-    if (messageLength >= 1000) return -1;
     if (isText) self->scratchSpace[0] = 0x81;
     else self->scratchSpace[0] = 0x82;
 
-    int32_t payloadIndex;
+    int32_t headerLength;
     if (messageLength < 126) {
         self->scratchSpace[1] = messageLength;
-        payloadIndex = 2;
+        headerLength = 2;
     } else {
         self->scratchSpace[1] = 126;
         self->scratchSpace[2] = messageLength >> 8;
         self->scratchSpace[3] = messageLength & 0xFF;
-        payloadIndex = 4;
+        headerLength = 4;
     }
-    memcpy(&self->scratchSpace[payloadIndex], message, messageLength);
 
-    int32_t totalLen = payloadIndex + messageLength;
-    if (send(client->fd, self->scratchSpace, totalLen, 0) != totalLen) return -2;
-
+    struct iovec iov[2] = {
+        {
+            .iov_base = &self->scratchSpace[0],
+            .iov_len = headerLength
+        },
+        {
+            .iov_base = message,
+            .iov_len = messageLength
+        },
+    };
+    struct msghdr msg = {
+        .msg_iov = &iov[0],
+        .msg_iovlen = 2,
+    };
+    if (sendmsg(client->fd, &msg, 0) != headerLength + messageLength) return -1;
     return 0;
 }
 
