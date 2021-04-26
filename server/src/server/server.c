@@ -275,7 +275,7 @@ static int server_handleHttpRequest(struct server *self, struct server_client *c
             client->receiveLength = 0;
 
             int32_t len = server_WEBSOCKET_ACCEPT_START_LEN + base64Len + 4;
-            if (send(client->fd, self->scratchSpace, len, 0) != len) return -2;
+            if (send(client->fd, self->scratchSpace, len, MSG_NOSIGNAL) != len) return -2;
             if (self->callbacks.onConnect(self->callbacks.data, client) != 0) return -3;
             // Only set this if the callback accepts the new connection.
             client->isWebsocket = true;
@@ -288,13 +288,13 @@ static int server_handleHttpRequest(struct server *self, struct server_client *c
                 self->fileResponses[i].urlLength == urlLength &&
                 memcmp(self->fileResponses[i].url, urlStart, urlLength) == 0
             ) {
-                if (send(client->fd, self->fileResponses[i].response, self->fileResponses[i].responseLength, 0) != self->fileResponses[i].responseLength) return -3;
+                if (send(client->fd, self->fileResponses[i].response, self->fileResponses[i].responseLength, MSG_NOSIGNAL) != self->fileResponses[i].responseLength) return -3;
                 return 0;
             }
         }
     }
     // We don't have any useful response, just send 404.
-    if (send(client->fd, "HTTP/1.1 404 Not Found\r\nContent-Length:0\r\n\r\n", 44, 0) != 44) return -4;
+    if (send(client->fd, "HTTP/1.1 404 Not Found\r\nContent-Length:0\r\n\r\n", 44, MSG_NOSIGNAL) != 44) return -4;
     return 0;
 }
 
