@@ -131,11 +131,10 @@ static int server_sendWebsocketMessage(struct server *self, struct server_client
         {
             .iov_base = &self->scratchSpace[0],
             .iov_len = headerLength
-        },
-        {
+        }, {
             .iov_base = message,
             .iov_len = messageLength
-        },
+        }
     };
     struct msghdr msg = {
         .msg_iov = &iov[0],
