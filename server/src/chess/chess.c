@@ -1,6 +1,7 @@
 #include "chess/chess.h"
 #include "chess/protocol.h"
 #include "server/fileResponse.h"
+#include "timespec.h"
 #include "generatedHtml.h"
 
 #include <stdlib.h>
@@ -27,7 +28,7 @@ static void chess_createRoom(struct chess *self, struct chessClient *chessClient
 static void chess_leaveRoom(struct chess *self, struct chessClient *chessClient) {
     struct chessRoom *room = chessClient->room;
     if (chessRoom_isFull(room)) {
-        struct chessClient *opponent = chessClient_isHost(chessClient) ? room->guest : room->host;
+        struct chessClient *opponent = chessClient_isHost(chessClient) ? room->guest.client : room->host.client;
         chessClient_unsetRoom(opponent);
         if (chess_sendClientState(self, opponent) < 0) {
             server_closeClient(&self->server, opponent->client);
@@ -65,8 +66,8 @@ static int chess_handleJoin(struct chess *self, struct chessClient *chessClient,
     if (chessRoom_start(room, chessClient, &self->server) < 0) return 0; // Not the client's fault.
     chessClient_setRoom(chessClient, room);
 
-    if (chess_sendClientState(self, room->host) < 0) {
-        server_closeClient(&self->server, room->host->client);
+    if (chess_sendClientState(self, room->host.client) < 0) {
+        server_closeClient(&self->server, room->host.client->client);
     }
     if (chess_sendClientState(self, chessClient) < 0) return -3;
     return 0;
@@ -90,7 +91,7 @@ static int chess_handleMove(struct chess *self, struct chessClient *chessClient,
     if (chessRoom_isMoveValid(room, fromX, fromY, toX, toY, isHost)) {
         chessRoom_doMove(room, fromX, fromY, toX, toY, isHost);
 
-        struct chessClient *opponent = isHost ? room->guest : room->host;
+        struct chessClient *opponent = isHost ? room->guest.client : room->host.client;
         if (chess_sendClientState(self, opponent) < 0) {
             server_closeClient(&self->server, opponent->client);
         }
@@ -160,7 +161,15 @@ static int chess_onMessage(void *self, struct server_client *client, uint8_t *me
 }
 
 static void chess_onTimer(void *self, int *timerHandle, uint64_t expirations) {
-    printf("Timer!!\n");
+    struct timespec currentTimespec;
+    clock_gettime(CLOCK_MONOTONIC, &currentTimespec);
+
+    struct chessRoom *room = &SELF->rooms[0];
+    for (;; ++room) {
+        if (timerHandle == &room->secondTimerHandle) break;
+    }
+    int64_t currentTime = timespec_toNanoseconds(currentTimespec);
+    chessRoom_updateTimeSpent(room, currentTime);
 }
 
 #undef SELF

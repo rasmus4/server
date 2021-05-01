@@ -45,6 +45,6 @@ static int server_sendWebsocketMessage(struct server *self, struct server_client
 // `*timerHandle` will be a negative number.
 static int server_createTimer(struct server *self, int *timerHandle);
 // See timerfd_settime(), `new_value`.
-static inline void server_startTimer(int timerHandle, struct itimerspec *value);
+static inline void server_startTimer(int timerHandle, struct itimerspec *value, bool absolute);
 static inline void server_stopTimer(int timerHandle);
 static inline void server_destroyTimer(int timerHandle);

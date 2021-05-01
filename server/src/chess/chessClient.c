@@ -26,7 +26,7 @@ static inline bool chessClient_inRoom(struct chessClient *self) {
 
 static inline bool chessClient_isHost(struct chessClient *self) {
     assert(self->room);
-    return self->room->host == self;
+    return self->room->host.client == self;
 }
 
 static int32_t chessClient_writeState(struct chessClient *self, struct chess *chess, uint8_t *buffer) {

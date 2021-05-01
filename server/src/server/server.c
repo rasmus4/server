@@ -344,8 +344,9 @@ static int server_createTimer(struct server *self, int *timerHandle) {
     return 0;
 }
 
-static inline void server_startTimer(int timerHandle, struct itimerspec *value) {
-    timerfd_settime(-timerHandle, 0, value, NULL);
+static inline void server_startTimer(int timerHandle, struct itimerspec *value, bool absolute) {
+    int flags = absolute ? TFD_TIMER_ABSTIME : 0;
+    timerfd_settime(-timerHandle, flags, value, NULL);
 }
 
 static inline void server_stopTimer(int timerHandle) {

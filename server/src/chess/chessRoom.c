@@ -2,6 +2,7 @@
 #include "chess/chessClient.h"
 #include "chess/protocol.h"
 #include "server/server.h"
+#include "timespec.h"
 
 #include <stdbool.h>
 #include <stdlib.h>
@@ -77,19 +78,19 @@ static inline int32_t chessRoom_distance(int32_t fromX, int32_t fromY, int32_t t
 
 static inline void chessRoom_create(struct chessRoom *self, int32_t index) {
     self->index = index;
-    self->host = NULL;
-    self->guest = NULL;
+    self->host.client = NULL;
+    self->guest.client = NULL;
     self->secondTimerHandle = 0;
 }
 
 static inline void chessRoom_open(struct chessRoom *self, struct chessClient *host, int32_t roomId) {
-    self->host = host;
+    self->host.client = host;
     self->roomId = roomId;
 }
 
 static inline void chessRoom_close(struct chessRoom *self) {
-    self->host = NULL;
-    self->guest = NULL;
+    self->host.client = NULL;
+    self->guest.client = NULL;
     if (self->secondTimerHandle != 0) {
         server_destroyTimer(self->secondTimerHandle);
         self->secondTimerHandle = 0;
@@ -99,25 +100,33 @@ static inline void chessRoom_close(struct chessRoom *self) {
 static int chessRoom_start(struct chessRoom *self, struct chessClient *guest, struct server *server) {
     if (server_createTimer(server, &self->secondTimerHandle) < 0) return -1;
 
-    self->guest = guest;
+    self->guest.client = guest;
     self->winner = protocol_NO_WIN;
     self->hostsTurn = true;
     chessRoom_initBoard(self);
 
+    self->host.timeSpent = 0;
+    self->guest.timeSpent = 0;
+
+    struct timespec currentTimespec;
+    clock_gettime(CLOCK_MONOTONIC, &currentTimespec);
+    self->host.lastUpdate = timespec_toNanoseconds(currentTimespec);
+
     struct itimerspec spec = {
         .it_interval.tv_sec = 1,
-        .it_value.tv_sec = 1
+        .it_value.tv_sec = currentTimespec.tv_sec + 1,
+        .it_value.tv_nsec = currentTimespec.tv_nsec
     };
-    server_startTimer(self->secondTimerHandle, &spec);
+    server_startTimer(self->secondTimerHandle, &spec, true);
     return 0;
 }
 
 static inline bool chessRoom_isOpen(struct chessRoom *self) {
-    return self->host;
+    return self->host.client;
 }
 
 static inline bool chessRoom_isFull(struct chessRoom *self) {
-    return self->guest; 
+    return self->guest.client; 
 }
 
 static inline bool chessRoom_isHostsTurn(struct chessRoom *self) {
@@ -195,7 +204,40 @@ static void chessRoom_doMove(struct chessRoom *self, int32_t fromX, int32_t from
     self->board[fromIndex] = protocol_NO_PIECE;
     self->lastMoveFromIndex = fromIndex;
     self->lastMoveToIndex = toIndex;
-    self->hostsTurn = !self->hostsTurn;
+
+    struct timespec currentTimespec;
+    clock_gettime(CLOCK_MONOTONIC, &currentTimespec);
+    int64_t currentTime = timespec_toNanoseconds(currentTimespec);
+
+    chessRoom_updateTimeSpent(self, currentTime);
+
+    int64_t timeSpent;
+    if (self->hostsTurn) {
+        self->guest.lastUpdate = currentTime;
+        timeSpent = self->guest.timeSpent;
+        self->hostsTurn = false;
+    } else {
+        self->host.lastUpdate = currentTime;
+        timeSpent = self->host.timeSpent;
+        self->hostsTurn = true;
+    }
+    struct itimerspec spec = {
+        .it_interval.tv_sec = 1,
+        .it_value = timespec_fromNanoseconds(currentTime + (int64_t)1000000000 - (timeSpent % 1000000000))
+    };
+    server_startTimer(self->secondTimerHandle, &spec, true);
+}
+
+static inline void chessRoom_updateTimeSpent(struct chessRoom *self, int64_t currentTime) {
+    if (self->hostsTurn) {
+        self->host.timeSpent += (currentTime - self->host.lastUpdate);
+        self->host.lastUpdate = currentTime;
+        printf("Host: %ld.%09ld\n", self->host.timeSpent / 1000000000, self->host.timeSpent % 1000000000);
+    } else {
+        self->guest.timeSpent += (currentTime - self->guest.lastUpdate);
+        self->guest.lastUpdate = currentTime;
+        printf("Guest: %ld.%09ld\n", self->guest.timeSpent / 1000000000, self->guest.timeSpent % 1000000000);
+    }
 }
 
 static uint8_t chessRoom_pieceAt(struct chessRoom *self, int32_t x, int32_t y, bool hostsPov) {
