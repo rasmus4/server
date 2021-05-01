@@ -91,38 +91,25 @@ static inline void chessRoom_close(struct chessRoom *self) {
     self->host = NULL;
     self->guest = NULL;
     if (self->secondTimerHandle != 0) {
-        server_closeTimer(self->secondTimerHandle);
+        server_destroyTimer(self->secondTimerHandle);
         self->secondTimerHandle = 0;
     }
 }
 
 static int chessRoom_start(struct chessRoom *self, struct chessClient *guest, struct server *server) {
-    int status;
-    if (server_createTimer(server, &self->secondTimerHandle) < 0) {
-        status = -1;
-        goto cleanup_none;
-    }
-
-    struct itimerspec spec = {
-        .it_interval.tv_sec = 1,
-        .it_value.tv_sec = 1
-    };
-    if (server_setTimer(self->secondTimerHandle, &spec) < 0) {
-        status = -2;
-        goto cleanup_timer;
-    }
+    if (server_createTimer(server, &self->secondTimerHandle) < 0) return -1;
 
     self->guest = guest;
     self->winner = protocol_NO_WIN;
     self->hostsTurn = true;
     chessRoom_initBoard(self);
-    return 0;
 
-    cleanup_timer:
-    server_closeTimer(self->secondTimerHandle);
-    self->secondTimerHandle = 0;
-    cleanup_none:
-    return status;
+    struct itimerspec spec = {
+        .it_interval.tv_sec = 1,
+        .it_value.tv_sec = 1
+    };
+    server_startTimer(self->secondTimerHandle, &spec);
+    return 0;
 }
 
 static inline bool chessRoom_isOpen(struct chessRoom *self) {

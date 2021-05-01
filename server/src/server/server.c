@@ -11,6 +11,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
+#include <sys/epoll.h>
 #include <fcntl.h>
 #include <errno.h>
 
@@ -343,32 +344,36 @@ static int server_createTimer(struct server *self, int *timerHandle) {
     return 0;
 }
 
-static inline int server_setTimer(int timerHandle, struct itimerspec *value) {
-    return timerfd_settime(-timerHandle, 0, value, NULL);
+static inline void server_startTimer(int timerHandle, struct itimerspec *value) {
+    timerfd_settime(-timerHandle, 0, value, NULL);
 }
 
-static inline void server_closeTimer(int timerHandle) {
+static inline void server_stopTimer(int timerHandle) {
+    struct itimerspec value = {0};
+    timerfd_settime(-timerHandle, 0, &value, NULL);
+}
+
+static inline void server_destroyTimer(int timerHandle) {
     close(-timerHandle);
 }
 
 static int server_run(struct server *self) {
     for (;;) {
-        int numEvents = epoll_wait(self->epollFd, self->epollEvents, server_MAX_EPOLL_EVENTS, -1);
-        for (int32_t i = 0; i < numEvents; ++i) {
-            int eventFd = *((int *)self->epollEvents[i].data.ptr);
-            if (eventFd < 0) {
-                uint64_t expirations;
-                if (read(-eventFd, &expirations, 8) <= 0) return -1;
-                self->callbacks.onTimer(self->callbacks.data, self->epollEvents[i].data.ptr, expirations);
-            } else if (eventFd == self->listenSocketFd) {
-                int status = server_acceptSocket(self);
-                if (status < 0) printf("Error accepting client socket! (%d)\n", status);
-                else printf("Accepted client socket! (%d)\n", status);
-            } else {
-                struct server_client *client = (struct server_client *)self->epollEvents[i].data.ptr;
-                int status = server_handleClient(self, client);
-                if (status < 0) printf("Error handling client! (%d)\n", status);
-            }
+        struct epoll_event event;
+        if (epoll_wait(self->epollFd, &event, 1, -1) < 0) return -1;
+        int eventFd = *((int *)event.data.ptr);
+        if (eventFd < 0) {
+            uint64_t expirations;
+            if (read(-eventFd, &expirations, 8) <= 0) return -2;
+            self->callbacks.onTimer(self->callbacks.data, event.data.ptr, expirations);
+        } else if (eventFd == self->listenSocketFd) {
+            int status = server_acceptSocket(self);
+            if (status < 0) printf("Error accepting client socket! (%d)\n", status);
+            else printf("Accepted client socket! (%d)\n", status);
+        } else {
+            struct server_client *client = (struct server_client *)event.data.ptr;
+            int status = server_handleClient(self, client);
+            if (status < 0) printf("Error handling client! (%d)\n", status);
         }
     }
     return 0;

@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <sys/timerfd.h>
 #include <sys/prctl.h>
+#include <sys/epoll.h>
 
 #define __STDC_FORMAT_MACROS
 
@@ -56,44 +57,47 @@ int main(int argc, char *argv[])
 	// set timer slack equal to 1 nanosecond
 	//prctl(PR_SET_TIMERSLACK, 1);
 
+
+    int epollfd = epoll_create1(0);
+
 	// timer setup
-	int timerfd = timerfd_create(CLOCK_MONOTONIC,0);
-	struct itimerspec timspec;
-	bzero(&timspec, sizeof(timspec));
-	timspec.it_interval.tv_sec = 1;
-	timspec.it_interval.tv_nsec = 0;//10000000;
-	timspec.it_value.tv_sec = 0;
-	timspec.it_value.tv_nsec = 1;
+	int timerfd = timerfd_create(CLOCK_MONOTONIC, 0);
+
+    struct epoll_event timerEvent = {
+        .events = EPOLLIN,
+        .data.fd = timerfd
+    };
+    epoll_ctl(epollfd, EPOLL_CTL_ADD, timerfd, &timerEvent);
+
+	struct itimerspec timspec = {
+        .it_interval.tv_sec = 1,
+        .it_value.tv_sec = 1   
+    };
+    struct itimerspec nospec = {0};
+    struct itimerspec longspec = {
+        .it_interval.tv_sec = 0,
+        .it_value.tv_sec = 5  
+    };
+
+    struct itimerspec oldspec = {0};
 
 	timerfd_settime(timerfd, 0, &timspec, 0);
+    printf("started...\n");
+    usleep(2500000);
+    printf("pause!...\n");
+    timerfd_settime(timerfd, 0, &longspec, &oldspec);
 
-    struct timespec time1, time2;
-    clock_gettime(CLOCK_MONOTONIC, &time1);
-    int first = 1;
-    long long test;
-    int iterations = 0;
+    printf("%ld, %ld\n", oldspec.it_value.tv_sec, oldspec.it_value.tv_nsec);
 
-	// poll the timerfd, if we missed an expiration, increment
-	while(read(timerfd, &test, sizeof(test))){
-        if (first) {
-            clock_gettime(CLOCK_MONOTONIC, &time1);
-            first = 0;
-        } else {
-            ++iterations;
-            clock_gettime(CLOCK_MONOTONIC, &time2);
-            char negative;
-            struct timespec ts = diff(time1, time2, &negative);
-            struct timespec expected;
-            expected.tv_sec = iterations;
-            expected.tv_nsec = 0;
-            
-            struct timespec off = diff(ts, expected, &negative);
+    uint64_t test;
 
-            //time1 = time2;
-            printf("%c%lld.%.9ld\n", negative, (long long)off.tv_sec, off.tv_nsec);
-            //printf("%c%lld.%.9ld\n", negative, (long long)ts.tv_sec, ts.tv_nsec);
-        }
-	}
-	// return success
-	return(0);
+    for (;;) {
+        struct epoll_event event;
+        if (epoll_wait(epollfd, &event, 1, -1) != 1) return -1;
+        printf("pre-read\n");
+        read(timerfd, &test, 8);
+        printf("Hmm: %ld\n", test);
+        usleep(2000000);
+    }
+    return 0;
 }
