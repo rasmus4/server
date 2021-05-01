@@ -62,7 +62,7 @@ static int chess_handleJoin(struct chess *self, struct chessClient *chessClient,
     found:
     if (chessRoom_isFull(room)) return 0; // Already full.
 
-    chessRoom_setGuest(room, chessClient);
+    if (chessRoom_start(room, chessClient, &self->server) < 0) return 0; // Not the client's fault.
     chessClient_setRoom(chessClient, room);
 
     if (chess_sendClientState(self, room->host) < 0) {
@@ -129,14 +129,38 @@ static int chess_onMessage(void *self, struct server_client *client, uint8_t *me
     struct chessClient *chessClient = &SELF->clients[client->index];
     
     if (messageLength < 1) return -1;
+    int status;
     switch (message[0]) {
-        case protocol_CREATE: return chess_handleCreate(SELF, chessClient, message, messageLength);
-        case protocol_JOIN:   return chess_handleJoin(SELF, chessClient, message, messageLength);
-        case protocol_MOVE:   return chess_handleMove(SELF, chessClient, message, messageLength);
-        case protocol_BACK:   return chess_handleBack(SELF, chessClient, message, messageLength);
+        case protocol_CREATE: {
+            status = chess_handleCreate(SELF, chessClient, message, messageLength);
+            if (status < 0) printf("Error creating room: %d\n", status);
+            break;
+        }
+        case protocol_JOIN: {
+            status = chess_handleJoin(SELF, chessClient, message, messageLength);
+            if (status < 0) printf("Error joining room: %d\n", status);
+            break;
+        }
+        case protocol_MOVE: {
+            status = chess_handleMove(SELF, chessClient, message, messageLength);
+            if (status < 0) printf("Error moving piece: %d\n", status);
+            break;
+        }
+        case protocol_BACK: {
+            status = chess_handleBack(SELF, chessClient, message, messageLength);
+            if (status < 0) printf("Error going back: %d\n", status);
+            break;
+        }
+        default: {
+            status = -1;
+            break;
+        }
     }
+    return status;
+}
 
-    return -1;
+static void chess_onTimer(void *self, int *timerHandle, uint64_t expirations) {
+    printf("Timer!!\n");
 }
 
 #undef SELF
@@ -211,7 +235,8 @@ static int chess_init(struct chess *self) {
         self,
         chess_onConnect,
         chess_onDisconnect,
-        chess_onMessage
+        chess_onMessage,
+        chess_onTimer
     );
 
     if (server_init(&self->server, &self->response, 1, &callbacks) < 0) {

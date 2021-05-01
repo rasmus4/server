@@ -1,6 +1,7 @@
 #include "chess/chess.h"
 #include "chess/chessClient.h"
 #include "chess/protocol.h"
+#include "server/server.h"
 
 #include <stdbool.h>
 #include <stdlib.h>
@@ -76,24 +77,52 @@ static inline int32_t chessRoom_distance(int32_t fromX, int32_t fromY, int32_t t
 
 static inline void chessRoom_create(struct chessRoom *self, int32_t index) {
     self->index = index;
-    chessRoom_close(self);
+    self->host = NULL;
+    self->guest = NULL;
+    self->secondTimerHandle = 0;
 }
 
 static inline void chessRoom_open(struct chessRoom *self, struct chessClient *host, int32_t roomId) {
     self->host = host;
     self->roomId = roomId;
-    self->winner = protocol_NO_WIN;
-    self->hostsTurn = true;
-    chessRoom_initBoard(self);
 }
 
 static inline void chessRoom_close(struct chessRoom *self) {
     self->host = NULL;
     self->guest = NULL;
+    if (self->secondTimerHandle != 0) {
+        server_closeTimer(self->secondTimerHandle);
+        self->secondTimerHandle = 0;
+    }
 }
 
-static inline void chessRoom_setGuest(struct chessRoom *self, struct chessClient *guest) {
+static int chessRoom_start(struct chessRoom *self, struct chessClient *guest, struct server *server) {
+    int status;
+    if (server_createTimer(server, &self->secondTimerHandle) < 0) {
+        status = -1;
+        goto cleanup_none;
+    }
+
+    struct itimerspec spec = {
+        .it_interval.tv_sec = 1,
+        .it_value.tv_sec = 1
+    };
+    if (server_setTimer(self->secondTimerHandle, &spec) < 0) {
+        status = -2;
+        goto cleanup_timer;
+    }
+
     self->guest = guest;
+    self->winner = protocol_NO_WIN;
+    self->hostsTurn = true;
+    chessRoom_initBoard(self);
+    return 0;
+
+    cleanup_timer:
+    server_closeTimer(self->secondTimerHandle);
+    self->secondTimerHandle = 0;
+    cleanup_none:
+    return status;
 }
 
 static inline bool chessRoom_isOpen(struct chessRoom *self) {

@@ -3,6 +3,7 @@
 #include "serverCallbacks.h"
 
 #include <sys/epoll.h>
+#include <sys/timerfd.h>
 #include <unistd.h>
 #include <stdbool.h>
 
@@ -43,3 +44,9 @@ static int server_run(struct server *self);
 static void server_closeClient(struct server *self, struct server_client *client);
 
 static int server_sendWebsocketMessage(struct server *self, struct server_client *client, uint8_t *message, int32_t messageLength, bool isText);
+
+// `*timerHandle` will be a negative number.
+static int server_createTimer(struct server *self, int *timerHandle);
+// See timerfd_settime() for `value`.
+static inline int server_setTimer(int timerHandle, struct itimerspec *value);
+static inline void server_closeTimer(int timerHandle);

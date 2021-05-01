@@ -12,6 +12,7 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <errno.h>
 
 #define server_WEBSOCKET_ACCEPT_START \
     "HTTP/1.1 101 Switching Protocols\r\n" \
@@ -23,7 +24,7 @@
 static int server_init(
     struct server *self,
     struct fileResponse *fileResponses,
-    int fileResponsesLength,
+    int32_t fileResponsesLength,
     struct serverCallbacks *callbacks
 ) {
     self->fileResponses = fileResponses;
@@ -48,17 +49,11 @@ static int server_init(
     self->epollFd = epoll_create1(0);
     if (self->epollFd < 0) return -5;
 
-    struct epoll_event listenSocketEvent;
-    listenSocketEvent.events = EPOLLIN;
-    listenSocketEvent.data.ptr = &self->listenSocketFd;
-    if (
-        epoll_ctl(
-            self->epollFd,
-            EPOLL_CTL_ADD,
-            self->listenSocketFd,
-            &listenSocketEvent
-        ) < 0
-    ) return -6;
+    struct epoll_event listenSocketEvent = {
+        .events = EPOLLIN,
+        .data.ptr = &self->listenSocketFd
+    };
+    if (epoll_ctl(self->epollFd, EPOLL_CTL_ADD, self->listenSocketFd, &listenSocketEvent) < 0) return -6;
 
     for (int32_t i = 0; i < server_MAX_CLIENTS; ++i) {
         server_client_init(&self->clients[i], i);
@@ -313,6 +308,7 @@ static int server_handleClient(struct server *self, struct server_client *client
     uint8_t *receivePosition = &client->receiveBuffer[client->receiveLength];
     ssize_t recvLength = recv(client->fd, receivePosition, remainingBuffer, 0);
     if (recvLength < 0) {
+        printf("hmm: %d\n", errno);
         server_closeClient(self, client);
         return -2;
     } else if (recvLength == 0) {
@@ -327,10 +323,32 @@ static int server_handleClient(struct server *self, struct server_client *client
 
         if (status != 1) { // Connection no longer in progress.
             server_closeClient(self, client);
-            if (status < 0) return -4;
+            if (status < 0) return -3;
         }
     }
     return 0;
+}
+
+static int server_createTimer(struct server *self, int *timerHandle) {
+    int fd = timerfd_create(CLOCK_MONOTONIC, 0);
+    if (fd < 0) return -1;
+
+    struct epoll_event timerEvent = {
+        .events = EPOLLIN,
+        .data.ptr = timerHandle
+    };
+    if (epoll_ctl(self->epollFd, EPOLL_CTL_ADD, fd, &timerEvent) < 0) return -2;
+
+    *timerHandle = -fd; // Fd 0 is reserved for stdin, so this always gives a negative number.
+    return 0;
+}
+
+static inline int server_setTimer(int timerHandle, struct itimerspec *value) {
+    return timerfd_settime(-timerHandle, 0, value, NULL);
+}
+
+static inline void server_closeTimer(int timerHandle) {
+    close(-timerHandle);
 }
 
 static int server_run(struct server *self) {
@@ -338,7 +356,11 @@ static int server_run(struct server *self) {
         int numEvents = epoll_wait(self->epollFd, self->epollEvents, server_MAX_EPOLL_EVENTS, -1);
         for (int32_t i = 0; i < numEvents; ++i) {
             int eventFd = *((int *)self->epollEvents[i].data.ptr);
-            if (eventFd == self->listenSocketFd) {
+            if (eventFd < 0) {
+                uint64_t expirations;
+                if (read(-eventFd, &expirations, 8) <= 0) return -1;
+                self->callbacks.onTimer(self->callbacks.data, self->epollEvents[i].data.ptr, expirations);
+            } else if (eventFd == self->listenSocketFd) {
                 int status = server_acceptSocket(self);
                 if (status < 0) printf("Error accepting client socket! (%d)\n", status);
                 else printf("Accepted client socket! (%d)\n", status);

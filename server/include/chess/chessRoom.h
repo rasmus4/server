@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 struct chessClient;
+struct server;
 
 struct chessRoom {
     int32_t index;
@@ -14,6 +15,7 @@ struct chessRoom {
     enum protocol_winner winner;
     int32_t lastMoveFromIndex;
     int32_t lastMoveToIndex;
+    int secondTimerHandle;
     bool hostsTurn;
 };
 
@@ -21,7 +23,7 @@ static inline void chessRoom_create(struct chessRoom *self, int32_t index);
 
 static inline void chessRoom_open(struct chessRoom *self, struct chessClient *host, int32_t roomId);
 static inline void chessRoom_close(struct chessRoom *self);
-static inline void chessRoom_setGuest(struct chessRoom *self, struct chessClient *guest);
+static int chessRoom_start(struct chessRoom *self, struct chessClient *guest, struct server *server);
 
 static inline bool chessRoom_isOpen(struct chessRoom *self);
 static inline bool chessRoom_isFull(struct chessRoom *self);
