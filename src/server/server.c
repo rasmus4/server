@@ -309,7 +309,6 @@ static int server_handleClient(struct server *self, struct server_client *client
     uint8_t *receivePosition = &client->receiveBuffer[client->receiveLength];
     ssize_t recvLength = recv(client->fd, receivePosition, remainingBuffer, 0);
     if (recvLength < 0) {
-        printf("hmm: %d\n", errno);
         server_closeClient(self, client);
         return -2;
     } else if (recvLength == 0) {
