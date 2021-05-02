@@ -23,11 +23,11 @@ int main(int argc, char **argv) {
     struct sched_param schedparm = {
         .sched_priority = 99
     };
-	if (sched_setscheduler(0, SCHED_FIFO, &schedparm) < 0) {
+    if (sched_setscheduler(0, SCHED_FIFO, &schedparm) < 0) {
         printf("Note: Could not set scheduler priority (run as root)\n");
     }
 
-	if (prctl(PR_SET_TIMERSLACK, 1) < 0) {
+    if (prctl(PR_SET_TIMERSLACK, 1) < 0) {
         printf("Failed to set timer slack\n");
         status = 1;
         goto cleanup_none;
