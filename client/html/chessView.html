@@ -1,9 +1,17 @@
 <div id="chessView" class="hiddenView">
     <div id="chessViewGame">
-        <span id="chessViewOpponentTimeSpent"></span>
+        <table class="layoutTable">
+            <tr id="chessViewTopRow">
+                <td class="alignRight"><span id="chessViewOpponentTimeSpent"></span></td>
+            </tr>
+        </table>
         <canvas id="chessViewCanvas"></canvas>
-        <input type="button" id="chessViewBack" tabindex="-1" value="Leave">
-        <span id="chessViewStatus"></span>
-        <span id="chessViewTimeSpent"></span>
+        <table class="layoutTable">
+            <tr id="chessViewBottomRow">
+                <td class="alignLeft alignTop"><input type="button" id="chessViewBack" tabindex="-1" value="Leave"></td>
+                <td class="alignCenter alignTop"><span id="chessViewStatus"></span></td>
+                <td class="alignRight alignTop"><span id="chessViewTimeSpent"></span></td>
+            </tr>
+        </table>
     </div>
 </div>

@@ -1,3 +1,24 @@
+.layoutTable {
+    width: 100%;
+    border-spacing: 0;
+}
+
+.alignLeft {
+    text-align: left;
+}
+
+.alignCenter {
+    text-align: center;
+}
+
+.alignRight {
+    text-align: right;
+}
+
+.alignTop {
+    vertical-align: top;
+}
+
 .hiddenView {
     display: none;
 }

@@ -1,22 +1,15 @@
-#chessViewStatus {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
+#chessViewBottomRow > td {
+    width: 33.33333333%;
 }
 
-#chessViewOpponentTimeSpent {
-    float: right;
+#chessViewTopRow > td {
+    width: 100%;
 }
 
-#chessViewTimeSpent {
-    float: right;
-}
-
-#chessViewBack {
-    float: left;
+#chessViewCanvas {
+    display: block;
 }
 
 #chessViewGame {
-    position: relative;
     width: min-content;
 }
