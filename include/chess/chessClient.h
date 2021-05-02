@@ -19,6 +19,6 @@ static inline void chessClient_unsetRoom(struct chessClient *self);
 static inline bool chessClient_inRoom(struct chessClient *self);
 static inline bool chessClient_isHost(struct chessClient *self);
 
-#define chessClient_writeState_MAX 69
+#define chessClient_writeState_MAX 85
 // Returns length written, max `chessClient_writeState_MAX` bytes.
 static int32_t chessClient_writeState(struct chessClient *self, struct chess *chess, uint8_t *buffer);

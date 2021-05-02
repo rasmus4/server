@@ -39,6 +39,7 @@ static inline enum protocol_winner chessRoom_winner(struct chessRoom *self);
 static inline int32_t chessRoom_lastMoveFromIndex(struct chessRoom *self, bool hostsPov);
 static inline int32_t chessRoom_lastMoveToIndex(struct chessRoom *self, bool hostsPov);
 static inline void chessRoom_updateTimeSpent(struct chessRoom *self, int64_t currentTime);
+static inline int64_t chessRoom_timeSpent(struct chessRoom *self, bool hostsPov);
 
 // Validates coordinates.
 static bool chessRoom_isMoveValid(struct chessRoom *self, int32_t fromX, int32_t fromY, int32_t toX, int32_t toY, bool hostsPov);

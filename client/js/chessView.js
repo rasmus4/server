@@ -7,6 +7,8 @@ class ChessView {
         this.canvas = document.getElementById("chessViewCanvas");
         this.statusSpan = document.getElementById("chessViewStatus");
         this.backButton = document.getElementById("chessViewBack");
+        this.timeSpentSpan = document.getElementById("chessViewTimeSpent");
+        this.opponentTimeSpentSpan = document.getElementById("chessViewOpponentTimeSpent");
         this.context = this.canvas.getContext("2d");
         this.board = new Uint8Array(64); // left->right, bottom->top
         this.selectedTile = null;
@@ -58,6 +60,10 @@ class ChessView {
         this.winner = dataView.getUint8(offset++);
         this.lastMoveFromIndex = dataView.getUint8(offset++);
         this.lastMoveToIndex = dataView.getUint8(offset++);
+        this.timeSpent = Number(dataView.getBigInt64(offset, true)) / 1000000000;
+        offset += 8;
+        this.opponentTimeSpent = Number(dataView.getBigInt64(offset, true)) / 1000000000;
+        offset += 8;
         for (let i = 0; i < 64; ++i) {
             this.board[i] = dataView.getUint8(offset + i);
         }
@@ -219,5 +225,7 @@ class ChessView {
             if (this.whitesTurn) this.statusSpan.textContent = "Whites turn";
             else this.statusSpan.textContent = "Blacks turn";
         }
+        this.timeSpentSpan.textContent = "Time spent: " + Number(Math.round(this.timeSpent + "e2") + "e-2") + "s";
+        this.opponentTimeSpentSpan.textContent = "Time spent: " + Number(Math.round(this.opponentTimeSpent + "e2") + "e-2") + "s";
     }
 }

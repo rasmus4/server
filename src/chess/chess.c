@@ -170,6 +170,13 @@ static void chess_onTimer(void *self, int *timerHandle, uint64_t expirations) {
     }
     int64_t currentTime = timespec_toNanoseconds(currentTimespec);
     chessRoom_updateTimeSpent(room, currentTime);
+
+    if (chess_sendClientState(SELF, room->host.client) < 0) {
+        server_closeClient(&SELF->server, room->host.client->client);
+    }
+    if (chess_sendClientState(SELF, room->guest.client) < 0) {
+        server_closeClient(&SELF->server, room->guest.client->client);
+    }
 }
 
 #undef SELF

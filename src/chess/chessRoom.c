@@ -232,12 +232,15 @@ static inline void chessRoom_updateTimeSpent(struct chessRoom *self, int64_t cur
     if (self->hostsTurn) {
         self->host.timeSpent += (currentTime - self->host.lastUpdate);
         self->host.lastUpdate = currentTime;
-        printf("Host: %ld.%09ld\n", self->host.timeSpent / 1000000000, self->host.timeSpent % 1000000000);
     } else {
         self->guest.timeSpent += (currentTime - self->guest.lastUpdate);
         self->guest.lastUpdate = currentTime;
-        printf("Guest: %ld.%09ld\n", self->guest.timeSpent / 1000000000, self->guest.timeSpent % 1000000000);
     }
+}
+
+static inline int64_t chessRoom_timeSpent(struct chessRoom *self, bool hostsPov) {
+    if (hostsPov) return self->host.timeSpent;
+    return self->guest.timeSpent;
 }
 
 static uint8_t chessRoom_pieceAt(struct chessRoom *self, int32_t x, int32_t y, bool hostsPov) {

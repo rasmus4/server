@@ -1,8 +1,22 @@
 #chessViewStatus {
-    display: block;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+#chessViewOpponentTimeSpent {
+    float: right;
+}
+
+#chessViewTimeSpent {
+    float: right;
+}
+
+#chessViewBack {
+    float: left;
 }
 
 #chessViewGame {
-    text-align: center;
+    position: relative;
     width: min-content;
 }

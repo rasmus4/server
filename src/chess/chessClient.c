@@ -41,12 +41,16 @@ static int32_t chessClient_writeState(struct chessClient *self, struct chess *ch
         buffer[2] = chessRoom_winner(self->room);
         buffer[3] = chessRoom_lastMoveFromIndex(self->room, isHost);
         buffer[4] = chessRoom_lastMoveToIndex(self->room, isHost);
+        int64_t timeSpent = chessRoom_timeSpent(self->room, isHost);
+        int64_t opponentTimeSpent = chessRoom_timeSpent(self->room, !isHost);
+        memcpy(&buffer[5], &timeSpent, 8);
+        memcpy(&buffer[13], &opponentTimeSpent, 8);
         if (isHost) {
-            memcpy(&buffer[5], &self->room->board[0], 64);
+            memcpy(&buffer[21], &self->room->board[0], 64);
         } else {
             // Flip the board for black.
             for (int i = 0; i < 64; ++i) {
-                buffer[5 + 63 - i] = self->room->board[i];
+                buffer[21 + 63 - i] = self->room->board[i];
             }
         }
         return chessClient_writeState_MAX;
