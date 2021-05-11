@@ -263,8 +263,8 @@ static int server_handleHttpRequest(struct server *self, struct server_client *c
             uint8_t *base64Encoded = base64_encode(&self->scratchSpace[512], SHA1HashSize, &base64Len);
             if (base64Encoded == NULL) return -1;
 
-            memcpy(self->scratchSpace, server_WEBSOCKET_ACCEPT_START, server_WEBSOCKET_ACCEPT_START_LEN);
-            memcpy(&self->scratchSpace[server_WEBSOCKET_ACCEPT_START_LEN], base64Encoded, server_WEBSOCKET_ACCEPT_START_LEN);
+            memcpy(&self->scratchSpace[0], server_WEBSOCKET_ACCEPT_START, server_WEBSOCKET_ACCEPT_START_LEN);
+            memcpy(&self->scratchSpace[server_WEBSOCKET_ACCEPT_START_LEN], base64Encoded, base64Len);
             memcpy(&self->scratchSpace[server_WEBSOCKET_ACCEPT_START_LEN + base64Len], "\r\n\r\n", 4);
 
             printf("Full Response: %.*s", (int)(server_WEBSOCKET_ACCEPT_START_LEN + base64Len + 4), self->scratchSpace);
