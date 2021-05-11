@@ -8,7 +8,7 @@
 
 static int chess_sendClientState(struct chess *self, struct chessClient *chessClient) {
     static uint8_t buffer[chessClient_writeState_MAX];
-    int32_t length = chessClient_writeState(chessClient, self, &buffer[0]);
+    int32_t length = chessClient_writeState(chessClient, &buffer[0]);
     if (server_sendWebsocketMessage(&self->server, chessClient->client, &buffer[0], length, false) < 0) return -1;
     return 0;
 }
@@ -186,7 +186,7 @@ static int chess_initFileResponse(struct chess *self) {
 
     int32_t digits = 1;
     int32_t magnitude = 10;
-    while (sizeof(generatedHtml) >= magnitude) {
+    while ((int32_t)sizeof(generatedHtml) >= magnitude) {
         ++digits;
         magnitude *= 10;
     }

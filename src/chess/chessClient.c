@@ -29,7 +29,7 @@ static inline bool chessClient_isHost(struct chessClient *self) {
     return self->room->host.client == self;
 }
 
-static int32_t chessClient_writeState(struct chessClient *self, struct chess *chess, uint8_t *buffer) {
+static int32_t chessClient_writeState(struct chessClient *self, uint8_t *buffer) {
     if (!chessClient_inRoom(self)) {
         buffer[0] = protocol_HOME;
         return 1;

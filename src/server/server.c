@@ -150,7 +150,7 @@ static int server_handleWebsocket(struct server *self, struct server_client *cli
     bool masking = client->receiveBuffer[1] & 0x80;
     if (!masking) return -2;
 
-    uint64_t payloadLength = client->receiveBuffer[1] & 0x7F;
+    int64_t payloadLength = client->receiveBuffer[1] & 0x7F;
     int32_t maskingKeyIndex;
     if (payloadLength == 126) {
         if (client->receiveLength < 4) return 1;
