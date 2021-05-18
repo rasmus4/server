@@ -7,9 +7,9 @@
 #include <string.h>
 
 static char *buffer = NULL;
-static int bufferLength = 0;
+static int32_t bufferLength = 0;
 
-static int replaceWithFile(int replaceIndex, int replaceLength, char *fileName, int fileNameLength) {
+static int replaceWithFile(int32_t replaceIndex, int32_t replaceLength, char *fileName, int32_t fileNameLength) {
     int status;
     char *fileNameZ = malloc(fileNameLength + 1);
     if (!fileNameZ) {
@@ -29,14 +29,14 @@ static int replaceWithFile(int replaceIndex, int replaceLength, char *fileName, 
         status = -3;
         goto cleanup_handle;
     }
-    int length = ftell(handle);
+    int32_t length = ftell(handle);
     if (length < 0) {
         status = -4;
         goto cleanup_handle;
     }
     rewind(handle);
 
-    int newBufferLength = bufferLength + (length - replaceLength);
+    int32_t newBufferLength = bufferLength + (length - replaceLength);
     if (newBufferLength > bufferLength) {
         char *newBuffer = realloc(buffer, newBufferLength + 1);
         if (!newBuffer) {
