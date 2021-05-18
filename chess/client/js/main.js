@@ -31,7 +31,7 @@ class Main {
         }
         this.chessView = new ChessView(this.onMove, this.onBack);
         this.connectingView = new ConnectingView();
-        
+
         this.roomView = new RoomView(this.onBack);
     }
     setView(newView) {

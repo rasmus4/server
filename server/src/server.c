@@ -358,14 +358,17 @@ static inline void server_destroyTimer(int timerHandle) {
     close(-timerHandle);
 }
 
-static int server_run(struct server *self) {
+static int server_run(struct server *self, bool busyWaiting) {
+    int timeout = busyWaiting ? 0 : -1;
     for (;;) {
         struct epoll_event event;
-        if (epoll_wait(self->epollFd, &event, 1, -1) < 0) return -1;
+        int status = epoll_wait(self->epollFd, &event, 1, timeout);
+        if (status <= 0) continue;
+
         int eventFd = *((int *)event.data.ptr);
         if (eventFd < 0) {
             uint64_t expirations;
-            if (read(-eventFd, &expirations, 8) <= 0) return -2;
+            if (read(-eventFd, &expirations, 8) <= 0) return -1;
             self->callbacks.onTimer(self->callbacks.data, event.data.ptr, expirations);
         } else if (eventFd == self->listenSocketFd) {
             int status = server_acceptSocket(self);

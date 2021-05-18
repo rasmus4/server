@@ -273,5 +273,5 @@ static void chess_deinit(struct chess *self) {
 }
 
 static int chess_run(struct chess *self) {
-    return server_run(&self->server);
+    return server_run(&self->server, false);
 }

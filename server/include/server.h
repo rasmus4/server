@@ -34,7 +34,7 @@ static int server_init(
     struct serverCallbacks *callbacks // Copied
 );
 static inline void server_deinit(struct server *self);
-static int server_run(struct server *self);
+static int server_run(struct server *self, bool busyWaiting);
 
 // Should not be used in a callback for the client in question, return non-zero instead.
 // Note: Will instantly call onDisconnect for the client.

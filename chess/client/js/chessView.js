@@ -52,7 +52,7 @@ class ChessView {
     close() {
         this.canvas.removeEventListener("mousedown", this.onMousedown);
         this.backButton.removeEventListener("click", this.onBackClicked);
-        
+
         this.div.classList.add("hiddenView");
     }
     update(dataView, offset) {
@@ -88,7 +88,7 @@ class ChessView {
                     this.context.fillRect(baseX, baseY, this.tileSize, this.tileSize);
                     this.context.globalAlpha = 1.0;
                 }
-                
+
                 let piece = this.board[index];
                 if (piece !== 0) {
                     if (piece & ProtocolPieces.WHITE_FLAG) {
@@ -159,7 +159,7 @@ class ChessView {
                             const horizontalFirstDipPad = this.tileSize / 3;
                             const horizontalSecondTopPad = this.tileSize / 2.8;
                             const horizontalSecondDipPad = this.tileSize / 2.3;
-                            
+
                             const verticalMiddlePad = this.tileSize / 5;
                             const verticalSecondPad = this.tileSize / 4;
                             const verticalFirstPad = this.tileSize / 3;
