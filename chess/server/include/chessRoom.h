@@ -1,5 +1,5 @@
 #pragma once
-#include "chess/protocol.h"
+#include "protocol.h"
 
 #include <stdint.h>
 #include <time.h>

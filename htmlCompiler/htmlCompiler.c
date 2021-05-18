@@ -62,14 +62,14 @@ static int replaceWithFile(int replaceIndex, int replaceLength, char *fileName, 
     return status;
 }
 
-static int writeToFile(char *fileName, char *content, int contentLength) {
+static int writeToFile(char *fileName, char *content, int32_t contentLength) {
     int status;
     FILE *handle = fopen(fileName, "w");
     if (!handle) {
         status = -1;
         goto cleanup_none;
     }
-    if (fwrite(content, 1, contentLength, handle) != contentLength) {
+    if (fwrite(content, 1, contentLength, handle) != (size_t)contentLength) {
         status = -2;
         goto cleanup_handle;
     };
@@ -82,12 +82,12 @@ static int writeToFile(char *fileName, char *content, int contentLength) {
 
 static int writeHeaderOutput(char *fileName, char *arrayName) {
     int status;
-    char start[] = "#include <stdint.h>\nuint8_t ";
+    char start[] = "#pragma once\n#include <stdint.h>\nstatic uint8_t ";
     char afterName[] = "[] = {";
     char betweenBytes[] = ",";
     char end[] = "};\n";
 
-    int maxLength = (
+    int32_t maxLength = (
         (sizeof(start) - 1) +
         strlen(arrayName) +
         (sizeof(afterName) - 1) +
@@ -106,7 +106,7 @@ static int writeHeaderOutput(char *fileName, char *arrayName) {
     strcat(outBuffer, arrayName);
     strcat(outBuffer, afterName);
 
-    for (int i = 0; i < bufferLength; ++i) {
+    for (int32_t i = 0; i < bufferLength; ++i) {
         sprintf(&outBuffer[strlen(outBuffer)], "%" PRIu8, (uint8_t)buffer[i]);
         if (i != bufferLength - 1) strcat(outBuffer, betweenBytes);
     }
@@ -139,8 +139,8 @@ static int handleInclude(char *includeStartPattern, char *includeEndPattern) {
         goto cleanup_none;
     }
     char *name = &includeStart[strlen(includeStartPattern)];
-    int nameLength = (int)(includeEnd - name);
-    status = replaceWithFile((int)(includeStart - buffer), (int)(includeEnd + strlen(includeEndPattern) - includeStart), name, nameLength);
+    int32_t nameLength = (int32_t)(includeEnd - name);
+    status = replaceWithFile((int32_t)(includeStart - buffer), (int32_t)(includeEnd + strlen(includeEndPattern) - includeStart), name, nameLength);
     if (status < 0) {
         printf("Error: Failed to include file %.*s (%d)\n", nameLength, name, status);
         status = -2;
@@ -184,7 +184,7 @@ int main(int argc, char **argv) {
         complete &= status;
     }
 
-    int outNameLength = strlen(argv[2]);
+    int32_t outNameLength = strlen(argv[2]);
     char *outName = malloc(outNameLength + 6); // 6 enough for ".html" and ".h".
     if (!outName) {
         printf("Error: Failed to allocate memory\n");

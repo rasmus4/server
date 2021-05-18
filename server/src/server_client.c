@@ -1,4 +1,4 @@
-#include "server/server.h"
+#include "server.h"
 
 static inline void server_client_init(struct server_client *self, int32_t index) {
     self->fd = -1;

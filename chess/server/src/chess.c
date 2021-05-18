@@ -1,6 +1,6 @@
-#include "chess/chess.h"
-#include "chess/protocol.h"
-#include "server/fileResponse.h"
+#include "chess.h"
+#include "protocol.h"
+#include "fileResponse.h"
 #include "timespec.h"
 #include "generatedHtml.h"
 

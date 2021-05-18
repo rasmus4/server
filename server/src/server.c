@@ -1,6 +1,6 @@
 #include "server_client.c"
 
-#include "server/server.h"
+#include "server.h"
 #include "base64.h"
 #include "sha1.h"
 

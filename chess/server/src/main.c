@@ -1,4 +1,4 @@
-#include "chess/chess.h"
+#include "chess.h"
 
 #include "timespec.h"
 
