@@ -259,20 +259,16 @@ static int server_handleHttpRequest(struct server *self, struct server_client *c
             SHA1Input(&sha1Context, self->scratchSpace, 24 + 36);
             SHA1Result(&sha1Context, &self->scratchSpace[512]);
 
-            size_t base64Len;
-            uint8_t *base64Encoded = base64_encode(&self->scratchSpace[512], SHA1HashSize, &base64Len);
-            if (base64Encoded == NULL) return -1;
-
             memcpy(&self->scratchSpace[0], server_WEBSOCKET_ACCEPT_START, server_WEBSOCKET_ACCEPT_START_LEN);
-            memcpy(&self->scratchSpace[server_WEBSOCKET_ACCEPT_START_LEN], base64Encoded, base64Len);
+            int32_t base64Len = base64_encode(&self->scratchSpace[512], SHA1HashSize, &self->scratchSpace[server_WEBSOCKET_ACCEPT_START_LEN]);
             memcpy(&self->scratchSpace[server_WEBSOCKET_ACCEPT_START_LEN + base64Len], "\r\n\r\n", 4);
 
             printf("Full Response: %.*s", (int)(server_WEBSOCKET_ACCEPT_START_LEN + base64Len + 4), self->scratchSpace);
             client->receiveLength = 0;
 
             int32_t len = server_WEBSOCKET_ACCEPT_START_LEN + base64Len + 4;
-            if (send(client->fd, self->scratchSpace, len, MSG_NOSIGNAL) != len) return -2;
-            if (self->callbacks.onConnect(self->callbacks.data, client) != 0) return -3;
+            if (send(client->fd, self->scratchSpace, len, MSG_NOSIGNAL) != len) return -1;
+            if (self->callbacks.onConnect(self->callbacks.data, client) != 0) return -2;
             // Only set this if the callback accepts the new connection.
             client->isWebsocket = true;
             return 1;

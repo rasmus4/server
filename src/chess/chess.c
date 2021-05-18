@@ -128,7 +128,7 @@ static void chess_onDisconnect(void *self, struct server_client *client) {
 
 static int chess_onMessage(void *self, struct server_client *client, uint8_t *message, int32_t messageLength, bool isText) {
     struct chessClient *chessClient = &SELF->clients[client->index];
-    
+
     if (messageLength < 1) return -1;
     int status;
     switch (message[0]) {

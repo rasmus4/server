@@ -126,11 +126,11 @@ static inline bool chessRoom_isOpen(struct chessRoom *self) {
 }
 
 static inline bool chessRoom_isFull(struct chessRoom *self) {
-    return self->guest.client; 
+    return self->guest.client;
 }
 
 static inline bool chessRoom_isHostsTurn(struct chessRoom *self) {
-    return self->hostsTurn; 
+    return self->hostsTurn;
 }
 
 static inline enum protocol_winner chessRoom_winner(struct chessRoom *self) {
@@ -159,7 +159,7 @@ static bool chessRoom_isMoveValid(struct chessRoom *self, int32_t fromX, int32_t
         bool hostsDestPiece = destPiece & protocol_WHITE_FLAG;
         if (hostsDestPiece == hostsPov) return false; // Can't take ur own pieces.
     }
-    
+
     switch (piece & protocol_PIECE_MASK) {
         case protocol_KING: return chessRoom_distance(fromX, fromY, toX, toY) == 1;
         case protocol_QUEEN: return (

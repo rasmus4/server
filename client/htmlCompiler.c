@@ -71,7 +71,7 @@ static int writeToFile(char *fileName, char *content, int contentLength) {
     }
     if (fwrite(content, 1, contentLength, handle) != contentLength) {
         status = -2;
-        goto cleanup_handle;   
+        goto cleanup_handle;
     };
     status = 0;
     cleanup_handle:
@@ -91,8 +91,8 @@ static int writeHeaderOutput(char *fileName, char *arrayName) {
         (sizeof(start) - 1) +
         strlen(arrayName) +
         (sizeof(afterName) - 1) +
-        (3 + (sizeof(betweenBytes) - 1)) * (bufferLength - 1) + 
-        (sizeof(end) - 1) + 
+        (3 + (sizeof(betweenBytes) - 1)) * (bufferLength - 1) +
+        (sizeof(end) - 1) +
         1
     );
 
@@ -164,7 +164,7 @@ int main(int argc, char **argv) {
         status = 1;
         goto cleanup_none;
     }
-    
+
     int complete = 0;
     while (!complete) {
         complete = 1;
@@ -199,7 +199,7 @@ int main(int argc, char **argv) {
         status = 1;
         goto cleanup_outName;
     }
-    
+
     memcpy(&outName[outNameLength], ".h", 3);
     status = writeHeaderOutput(outName, argv[2]);
     if (status < 0) {
