@@ -141,7 +141,7 @@ static int server_sendWebsocketMessage(struct server *self, struct server_client
         .msg_iov = &iov[0],
         .msg_iovlen = 2,
     };
-    if (sendmsg(client->fd, &msg, 0) != headerLength + messageLength) return -1;
+    if (sendmsg(client->fd, &msg, MSG_NOSIGNAL) != headerLength + messageLength) return -1;
     return 0;
 }
 
