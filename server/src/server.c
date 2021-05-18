@@ -10,6 +10,7 @@
 
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netinet/tcp.h>
 #include <sys/types.h>
 #include <sys/epoll.h>
 #include <fcntl.h>
@@ -37,24 +38,25 @@ static int server_init(
 
     int enable = 1;
     if (setsockopt(self->listenSocketFd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable)) < 0) return -2;
+    if (setsockopt(self->listenSocketFd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable)) < 0) return -3;
 
     struct sockaddr_in listenAddr;
     listenAddr.sin_family = AF_INET;
     listenAddr.sin_addr.s_addr = INADDR_ANY;
     listenAddr.sin_port = htons(8089);
 
-    if (bind(self->listenSocketFd, (struct sockaddr *)&listenAddr, sizeof(listenAddr)) < 0) return -3;
+    if (bind(self->listenSocketFd, (struct sockaddr *)&listenAddr, sizeof(listenAddr)) < 0) return -4;
 
-    if (listen(self->listenSocketFd, 128) < 0) return -4;
+    if (listen(self->listenSocketFd, 128) < 0) return -5;
 
     self->epollFd = epoll_create1(0);
-    if (self->epollFd < 0) return -5;
+    if (self->epollFd < 0) return -6;
 
     struct epoll_event listenSocketEvent = {
         .events = EPOLLIN,
         .data.ptr = &self->listenSocketFd
     };
-    if (epoll_ctl(self->epollFd, EPOLL_CTL_ADD, self->listenSocketFd, &listenSocketEvent) < 0) return -6;
+    if (epoll_ctl(self->epollFd, EPOLL_CTL_ADD, self->listenSocketFd, &listenSocketEvent) < 0) return -7;
 
     for (int32_t i = 0; i < server_MAX_CLIENTS; ++i) {
         server_client_init(&self->clients[i], i);
@@ -77,6 +79,9 @@ static int server_acceptSocket(struct server *self) {
     if (currentFlags == -1) goto cleanup_newSocketFd;
 
     if (fcntl(newSocketFd, F_SETFL, currentFlags | O_NONBLOCK) == -1) goto cleanup_newSocketFd;
+
+    int enable = 1;
+    if (setsockopt(newSocketFd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable)) < 0) goto cleanup_newSocketFd;
 
     // Find empty client spot
     for (int i = 0; i < server_MAX_CLIENTS; ++i) {
