@@ -1,6 +1,7 @@
 #pragma once
-#include "fileResponse.h"
-#include "serverCallbacks.h"
+#include "include/fileResponse.h"
+#include "include/serverCallbacks.h"
+#include "include/serverClient.h"
 
 #include <sys/timerfd.h>
 #include <unistd.h>
@@ -8,14 +9,6 @@
 
 #define server_RECEIVE_BUFFER_SIZE 4096
 #define server_MAX_CLIENTS 256
-
-struct serverClient {
-    int fd;
-    uint8_t receiveBuffer[server_RECEIVE_BUFFER_SIZE];
-    int32_t receiveLength;
-    int index;
-    bool isWebsocket;
-};
 
 struct server {
     int listenSocketFd;
