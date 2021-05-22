@@ -9,7 +9,7 @@
 #define server_RECEIVE_BUFFER_SIZE 4096
 #define server_MAX_CLIENTS 256
 
-struct server_client {
+struct serverClient {
     int fd;
     uint8_t receiveBuffer[server_RECEIVE_BUFFER_SIZE];
     int32_t receiveLength;
@@ -20,7 +20,7 @@ struct server_client {
 struct server {
     int listenSocketFd;
     int epollFd;
-    struct server_client clients[server_MAX_CLIENTS];
+    struct serverClient clients[server_MAX_CLIENTS];
     struct fileResponse *fileResponses;
     int32_t fileResponsesLength;
     struct serverCallbacks callbacks;
@@ -38,9 +38,9 @@ static int server_run(struct server *self, bool busyWaiting);
 
 // Should not be used in a callback for the client in question, return non-zero instead.
 // Note: Will instantly call onDisconnect for the client.
-static void server_closeClient(struct server *self, struct server_client *client);
+static void server_closeClient(struct server *self, struct serverClient *client);
 
-static int server_sendWebsocketMessage(struct server *self, struct server_client *client, uint8_t *message, int32_t messageLength, bool isText);
+static int server_sendWebsocketMessage(struct server *self, struct serverClient *client, uint8_t *message, int32_t messageLength, bool isText);
 
 // `*timerHandle` will be a negative number.
 static int server_createTimer(struct server *self, int *timerHandle);

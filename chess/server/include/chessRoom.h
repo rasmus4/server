@@ -1,5 +1,5 @@
 #pragma once
-#include "protocol.h"
+#include "include/protocol.h"
 
 #include <stdint.h>
 #include <time.h>

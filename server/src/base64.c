@@ -1,7 +1,8 @@
+#include "include/base64.h"
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <base64.h>
 
 static uint8_t base64_table[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 

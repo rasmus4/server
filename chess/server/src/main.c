@@ -1,6 +1,6 @@
-#include "chess.h"
+#include "include/chess.h"
 
-#include "timespec.h"
+#include "include/timespec.h"
 
 #include <stdlib.h>
 #include <stdio.h>

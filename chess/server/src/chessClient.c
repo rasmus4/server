@@ -1,14 +1,14 @@
-#include "chessClient.h"
-#include "chess.h"
-#include "protocol.h"
-#include "chessRoom.h"
+#include "include/chessClient.h"
+#include "include/chess.h"
+#include "include/protocol.h"
+#include "include/chessRoom.h"
 
 #include <stdbool.h>
 #include <string.h>
 #include <assert.h>
 
-static void chessClient_create(struct chessClient *self, struct server_client *client) {
-    self->client = client;
+static void chessClient_create(struct chessClient *self, struct serverClient *client) {
+    self->serverClient = client;
     chessClient_unsetRoom(self);
 }
 

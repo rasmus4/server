@@ -5,14 +5,14 @@
 
 struct chessRoom;
 struct chess;
-struct server_client;
+struct serverClient;
 
 struct chessClient {
-    struct server_client *client;
+    struct serverClient *serverClient;
     struct chessRoom *room; // NULL if none.
 };
 
-static void chessClient_create(struct chessClient *self, struct server_client *client);
+static void chessClient_create(struct chessClient *self, struct serverClient *client);
 
 static inline void chessClient_setRoom(struct chessClient *self, struct chessRoom *room);
 static inline void chessClient_unsetRoom(struct chessClient *self);

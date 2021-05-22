@@ -1,8 +1,7 @@
-#include "server_client.c"
-
-#include "server.h"
-#include "base64.h"
-#include "sha1.h"
+#include "include/server.h"
+#include "include/base64.h"
+#include "include/sha1.h"
+#include "serverClient.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -59,7 +58,7 @@ static int server_init(
     if (epoll_ctl(self->epollFd, EPOLL_CTL_ADD, self->listenSocketFd, &listenSocketEvent) < 0) return -7;
 
     for (int32_t i = 0; i < server_MAX_CLIENTS; ++i) {
-        server_client_init(&self->clients[i], i);
+        serverClient_init(&self->clients[i], i);
     }
 
     return 0;
@@ -67,7 +66,7 @@ static int server_init(
 
 static inline void server_deinit(struct server *self) {
     for (int32_t i = 0; i < server_MAX_CLIENTS; ++i) {
-        server_client_deinit(&self->clients[i]);
+        serverClient_deinit(&self->clients[i]);
     }
 }
 
@@ -92,7 +91,7 @@ static int server_acceptSocket(struct server *self) {
 
             if (epoll_ctl(self->epollFd, EPOLL_CTL_ADD, newSocketFd, &newSocketEvent) < 0) goto cleanup_newSocketFd;
 
-            server_client_open(&self->clients[i], newSocketFd);
+            serverClient_open(&self->clients[i], newSocketFd);
             return 0;
         }
     }
@@ -113,7 +112,7 @@ static int32_t server_findLineEnd(uint8_t *buffer, int32_t index, int32_t end) {
     return -1;
 }
 
-static int server_sendWebsocketMessage(struct server *self, struct server_client *client, uint8_t *message, int32_t messageLength, bool isText) {
+static int server_sendWebsocketMessage(struct server *self, struct serverClient *client, uint8_t *message, int32_t messageLength, bool isText) {
     if (isText) self->scratchSpace[0] = 0x81;
     else self->scratchSpace[0] = 0x82;
 
@@ -146,7 +145,7 @@ static int server_sendWebsocketMessage(struct server *self, struct server_client
 }
 
 // Returns 1 if the connection should be kept.
-static int server_handleWebsocket(struct server *self, struct server_client *client) {
+static int server_handleWebsocket(struct server *self, struct serverClient *client) {
     if (client->receiveLength < 2) return 1; // No space for even the payload length.
     bool fin = client->receiveBuffer[0] & 0x80;
     if (!fin) return -1; // TODO support fragmentation.
@@ -212,7 +211,7 @@ static int server_handleWebsocket(struct server *self, struct server_client *cli
 }
 
 // Returns 1 if the connection should be kept.
-static int server_handleHttpRequest(struct server *self, struct server_client *client) {
+static int server_handleHttpRequest(struct server *self, struct serverClient *client) {
     printf("Got: %.*s\n", client->receiveLength, client->receiveBuffer);
 
     int32_t lineEnd = server_findLineEnd(client->receiveBuffer, 0, client->receiveLength);
@@ -295,12 +294,12 @@ static int server_handleHttpRequest(struct server *self, struct server_client *c
     return 0;
 }
 
-static void server_closeClient(struct server *self, struct server_client *client) {
+static void server_closeClient(struct server *self, struct serverClient *client) {
     if (client->isWebsocket) self->callbacks.onDisconnect(self->callbacks.data, client);
-    server_client_close(client);
+    serverClient_close(client);
 }
 
-static int server_handleClient(struct server *self, struct server_client *client) {
+static int server_handleClient(struct server *self, struct serverClient *client) {
     int32_t remainingBuffer = server_RECEIVE_BUFFER_SIZE - client->receiveLength;
     if (remainingBuffer <= 0) {
         server_closeClient(self, client);
@@ -375,7 +374,7 @@ static int server_run(struct server *self, bool busyWaiting) {
             if (status < 0) printf("Error accepting client socket! (%d)\n", status);
             else printf("Accepted client socket! (%d)\n", status);
         } else {
-            struct server_client *client = (struct server_client *)event.data.ptr;
+            struct serverClient *client = (struct serverClient *)event.data.ptr;
             int status = server_handleClient(self, client);
             if (status < 0) printf("Error handling client! (%d)\n", status);
         }

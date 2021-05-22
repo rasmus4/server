@@ -1,7 +1,7 @@
-#include "chess.h"
-#include "protocol.h"
-#include "fileResponse.h"
-#include "timespec.h"
+#include "include/chess.h"
+#include "include/protocol.h"
+#include "include/fileResponse.h"
+#include "include/timespec.h"
 #include "generatedHtml.h"
 
 #include <stdlib.h>
@@ -9,7 +9,7 @@
 static int chess_sendClientState(struct chess *self, struct chessClient *chessClient) {
     static uint8_t buffer[chessClient_writeState_MAX];
     int32_t length = chessClient_writeState(chessClient, &buffer[0]);
-    if (server_sendWebsocketMessage(&self->server, chessClient->client, &buffer[0], length, false) < 0) return -1;
+    if (server_sendWebsocketMessage(&self->server, chessClient->serverClient, &buffer[0], length, false) < 0) return -1;
     return 0;
 }
 
@@ -31,7 +31,7 @@ static void chess_leaveRoom(struct chess *self, struct chessClient *chessClient)
         struct chessClient *opponent = chessClient_isHost(chessClient) ? room->guest.client : room->host.client;
         chessClient_unsetRoom(opponent);
         if (chess_sendClientState(self, opponent) < 0) {
-            server_closeClient(&self->server, opponent->client);
+            server_closeClient(&self->server, opponent->serverClient);
         }
     }
     chessClient_unsetRoom(chessClient);
@@ -67,7 +67,7 @@ static int chess_handleJoin(struct chess *self, struct chessClient *chessClient,
     chessClient_setRoom(chessClient, room);
 
     if (chess_sendClientState(self, room->host.client) < 0) {
-        server_closeClient(&self->server, room->host.client->client);
+        server_closeClient(&self->server, room->host.client->serverClient);
     }
     if (chess_sendClientState(self, chessClient) < 0) return -3;
     return 0;
@@ -93,7 +93,7 @@ static int chess_handleMove(struct chess *self, struct chessClient *chessClient,
 
         struct chessClient *opponent = isHost ? room->guest.client : room->host.client;
         if (chess_sendClientState(self, opponent) < 0) {
-            server_closeClient(&self->server, opponent->client);
+            server_closeClient(&self->server, opponent->serverClient);
         }
         if (chess_sendClientState(self, chessClient) < 0) return -4;
     }
@@ -109,7 +109,7 @@ static int chess_handleBack(struct chess *self, struct chessClient *chessClient,
 
 #define SELF ((struct chess *)(self))
 
-static int chess_onConnect(void *self, struct server_client *client) {
+static int chess_onConnect(void *self, struct serverClient *client) {
     // Complete handshake.
     uint32_t version = protocol_VERSION;
     if (server_sendWebsocketMessage(&SELF->server, client, (uint8_t *)&version, 4, false) < 0) return -1;
@@ -120,13 +120,13 @@ static int chess_onConnect(void *self, struct server_client *client) {
     return 0;
 }
 
-static void chess_onDisconnect(void *self, struct server_client *client) {
+static void chess_onDisconnect(void *self, struct serverClient *client) {
     struct chessClient *chessClient = &SELF->clients[client->index];
     if (!chessClient_inRoom(chessClient)) return;
     chess_leaveRoom(self, chessClient);
 }
 
-static int chess_onMessage(void *self, struct server_client *client, uint8_t *message, int32_t messageLength, bool isText) {
+static int chess_onMessage(void *self, struct serverClient *client, uint8_t *message, int32_t messageLength, bool isText) {
     struct chessClient *chessClient = &SELF->clients[client->index];
 
     if (messageLength < 1) return -1;
@@ -172,10 +172,10 @@ static void chess_onTimer(void *self, int *timerHandle, uint64_t expirations) {
     chessRoom_updateTimeSpent(room, currentTime);
 
     if (chess_sendClientState(SELF, room->host.client) < 0) {
-        server_closeClient(&SELF->server, room->host.client->client);
+        server_closeClient(&SELF->server, room->host.client->serverClient);
     }
     if (chess_sendClientState(SELF, room->guest.client) < 0) {
-        server_closeClient(&SELF->server, room->guest.client->client);
+        server_closeClient(&SELF->server, room->guest.client->serverClient);
     }
 }
 

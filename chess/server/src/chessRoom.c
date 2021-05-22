@@ -1,8 +1,8 @@
-#include "chess.h"
-#include "chessClient.h"
-#include "protocol.h"
-#include "server.h"
-#include "timespec.h"
+#include "include/chess.h"
+#include "include/chessClient.h"
+#include "include/protocol.h"
+#include "include/server.h"
+#include "include/timespec.h"
 
 #include <stdbool.h>
 #include <stdlib.h>
