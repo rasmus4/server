@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Logic3D</title>
+        <link rel="icon" type="image/png" sizes="16x16" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAQklEQVQ4jWNgoDH4D8U4AROlNjASsJ2gWpq5AJe/MdTTxAV4Qx1dD9VdQMh2DH1UdQGxtqPopZoLSLUdrp9iF1AMAEObCBMnJ5lhAAAAAElFTkSuQmCC"/>
+        <script>
+"use strict";
+/*INCLUDE(js/gl.js)*/
+/*INCLUDE(js/mat.js)*/
+/*INCLUDE(js/render.js)*/
+/*INCLUDE(js/block.js)*/
+/*INCLUDE(js/logic.js)*/
+/*INCLUDE(js/world.js)*/
+/*INCLUDE(js/worldedit.js)*/
+/*INCLUDE(js/webgl.js)*/
+        </script>
+        <style>
+        </style>
+    </head>
+    <body>
+        <button id="newWorldButton">New world</button>
+        <button id="saveButton">Save</button>
+        <button id="saveFileButton">Save file</button>
+        <button onclick="document.getElementById('loadFileInput').click();">Load file</button>
+        <input type="file" id="loadFileInput" hidden>
+        <label id="fpsLabel"></label>
+        <br>
+        <canvas id="glCanvas" width="800" height="600"></canvas>
+        <br>
+        <button id="setPosButton"></button>
+        <button id="copyButton">Copy</button>
+        <button id="pasteButton">Paste</button>
+        <button id="fillButton">Fill</button>
+        <button id="undoButton">Undo</button>
+    </body>
+</html>
