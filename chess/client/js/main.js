@@ -100,7 +100,10 @@ class Main {
                 this.connect();
             }, 5000);
         };
-        this.socket = new WebSocket("ws://" + location.host + "/chess");
+        let wsproto = "ws://";
+        if (location.protocol == "https:")
+            wsproto = "wss://";
+        this.socket = new WebSocket(wsproto + location.host + "/chess");
         this.socket.binaryType = "arraybuffer";
         this.socket.addEventListener("open", this.onSocketOpen);
         this.socket.addEventListener("close", this.onSocketClose);
