@@ -13,7 +13,7 @@ static int chess_sendClientState(struct chess *self, struct chessClient *chessCl
     return 0;
 }
 
-static void chess_createRoom(struct chess *self, struct chessClient *chessClient) {
+static void chess_createRoom(struct chess *self, struct chessClient *chessClient, bool friendlyFire) {
     struct chessRoom *room = &self->rooms[0];
     // Atleast one room is guaranteed to be empty.
     for (;; ++room) {
@@ -21,6 +21,7 @@ static void chess_createRoom(struct chess *self, struct chessClient *chessClient
     }
     // Note: Relies on server_MAX_CLIENTS being power of 2!
     int randomPart = rand() & ~(server_MAX_CLIENTS - 1);
+    room->friendlyFire = friendlyFire;
     chessRoom_open(room, chessClient, randomPart | room->index);
     chessClient_setRoom(chessClient, room);
 }
@@ -40,7 +41,15 @@ static void chess_leaveRoom(struct chess *self, struct chessClient *chessClient)
 
 static int chess_handleCreate(struct chess *self, struct chessClient *chessClient, uint8_t *message, int32_t messageLength) {
     if (chessClient_inRoom(chessClient)) return -1;
-    chess_createRoom(self, chessClient);
+    switch (message[1]) {
+        case protocol_HCHESS: {
+            chess_createRoom(self, chessClient, (bool) message[2]);
+            break;
+        }
+        default: {
+            return -1;
+        }
+    }
     if (chess_sendClientState(self, chessClient) < 0) return -2;
     return 0;
 }

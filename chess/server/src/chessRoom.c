@@ -81,6 +81,7 @@ static inline void chessRoom_create(struct chessRoom *self, int32_t index) {
     self->host.client = NULL;
     self->guest.client = NULL;
     self->secondTimerHandle = 0;
+    self->friendlyFire = false;
 }
 
 static inline void chessRoom_open(struct chessRoom *self, struct chessClient *host, int32_t roomId) {
@@ -155,7 +156,7 @@ static bool chessRoom_isMoveValid(struct chessRoom *self, int32_t fromX, int32_t
     if (hostsPiece != hostsPov) return false;
 
     uint8_t destPiece = chessRoom_pieceAt(self, toX, toY, hostsPov);
-    if (destPiece != protocol_NO_PIECE) {
+    if (!self->friendlyFire && destPiece != protocol_NO_PIECE) {
         bool hostsDestPiece = destPiece & protocol_WHITE_FLAG;
         if (hostsDestPiece == hostsPov) return false; // Can't take ur own pieces.
     }

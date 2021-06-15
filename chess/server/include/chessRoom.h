@@ -24,6 +24,7 @@ struct chessRoom {
     int32_t lastMoveToIndex;
     int secondTimerHandle;
     bool hostsTurn;
+    bool friendlyFire;
 };
 
 static inline void chessRoom_create(struct chessRoom *self, int32_t index);

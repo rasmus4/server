@@ -1,6 +1,6 @@
 #pragma once
 
-#define protocol_VERSION 1
+#define protocol_VERSION 2
 
 enum protocol_clientOp {
     protocol_MOVE = 0,
@@ -31,4 +31,8 @@ enum protocol_pieces {
     protocol_KING = 6,
     protocol_PIECE_MASK = 0x7F,
     protocol_WHITE_FLAG = 0x80
+};
+
+enum protocol_room_type {
+    protocol_HCHESS = 0
 };
