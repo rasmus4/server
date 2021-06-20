@@ -6,6 +6,6 @@ struct serverClient {
     int fd;
     uint8_t receiveBuffer[serverClientRECEIVE_BUFFER_SIZE];
     int32_t receiveLength;
-    int index;
+    int32_t index;
     bool isWebsocket;
 };

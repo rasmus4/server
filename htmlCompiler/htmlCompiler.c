@@ -11,13 +11,13 @@ static int32_t bufferLength = 0;
 
 static int replaceWithFile(int32_t replaceIndex, int32_t replaceLength, char *fileName, int32_t fileNameLength) {
     char *fileNameZ = malloc(fileNameLength + 1);
-    if (!fileNameZ) return -1;
+    if (fileNameZ == NULL) return -1;
     memcpy(fileNameZ, fileName, fileNameLength);
     fileNameZ[fileNameLength] = '\0';
 
     int status;
     FILE *handle = fopen(fileNameZ, "r");
-    if (!handle) {
+    if (handle == NULL) {
         status = -2;
         goto cleanup_fileNameZ;
     }
@@ -36,7 +36,7 @@ static int replaceWithFile(int32_t replaceIndex, int32_t replaceLength, char *fi
     int32_t newBufferLength = bufferLength + (length - replaceLength);
     if (newBufferLength > bufferLength) {
         char *newBuffer = realloc(buffer, newBufferLength + 1);
-        if (!newBuffer) {
+        if (newBuffer == NULL) {
             status = -5;
             goto cleanup_handle;
         }
@@ -60,7 +60,7 @@ static int replaceWithFile(int32_t replaceIndex, int32_t replaceLength, char *fi
 
 static int writeToFile(char *fileName, char *content, int32_t contentLength) {
     FILE *handle = fopen(fileName, "w");
-    if (!handle) return -1;
+    if (handle == NULL) return -1;
 
     int status;
     if (fwrite(content, 1, contentLength, handle) != (size_t)contentLength) {
@@ -89,7 +89,7 @@ static int writeHeaderOutput(char *fileName, char *arrayName) {
     );
 
     char *outBuffer = malloc(maxLength);
-    if (!outBuffer) return -1;
+    if (outBuffer == NULL) return -1;
     outBuffer[0] = '\0';
     strcat(outBuffer, start);
     strcat(outBuffer, arrayName);
@@ -115,9 +115,9 @@ static int writeHeaderOutput(char *fileName, char *arrayName) {
 
 static int handleInclude(char *includeStartPattern, char *includeEndPattern) {
     char *includeStart = strstr(buffer, includeStartPattern);
-    if (!includeStart) return 1;
+    if (includeStart == NULL) return 1;
     char *includeEnd = strstr(includeStart, includeEndPattern);
-    if (!includeEnd) {
+    if (includeEnd == NULL) {
         printf("Error: Unclosed include\n");
         return -1;
     }
@@ -163,7 +163,7 @@ int main(int argc, char **argv) {
 
     int32_t outNameLength = strlen(argv[2]);
     char *outName = malloc(outNameLength + 6); // 6 enough for ".html" and ".h".
-    if (!outName) {
+    if (outName == NULL) {
         printf("Error: Failed to allocate memory\n");
         status = 1;
         goto cleanup_buffer;

@@ -6,6 +6,7 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
+#include <assert.h>
 
 static void chessRoom_initBoard(struct chessRoom *self) {
     self->board[0] = self->board[7] = protocol_ROOK  | protocol_WHITE_FLAG;
@@ -80,12 +81,14 @@ static inline void chessRoom_create(struct chessRoom *self, int32_t index) {
     self->index = index;
     self->host.client = NULL;
     self->guest.client = NULL;
-    self->secondTimerHandle = 0;
 }
 
 static inline void chessRoom_open(struct chessRoom *self, struct chessClient *host, int32_t roomId) {
     self->host.client = host;
     self->roomId = roomId;
+    self->spectators = NULL;
+    self->numSpectators = 0;
+    self->secondTimerHandle = 0;
 }
 
 static inline void chessRoom_close(struct chessRoom *self) {
@@ -95,6 +98,8 @@ static inline void chessRoom_close(struct chessRoom *self) {
         server_destroyTimer(self->secondTimerHandle);
         self->secondTimerHandle = 0;
     }
+    assert(self->numSpectators == 0);
+    free(self->spectators);
 }
 
 static int chessRoom_start(struct chessRoom *self, struct chessClient *guest, struct server *server) {
@@ -119,6 +124,33 @@ static int chessRoom_start(struct chessRoom *self, struct chessClient *guest, st
     };
     server_startTimer(self->secondTimerHandle, &spec, true);
     return 0;
+}
+
+static int chessRoom_addSpectator(struct chessRoom *self, int32_t clientIndex) {
+    if (self->numSpectators == INT32_MAX) return -1; // Never know ;)
+    int32_t *newSpectators = realloc(self->spectators, (self->numSpectators + 1) * sizeof(int32_t));
+    if (newSpectators == NULL) return -2;
+
+    newSpectators[self->numSpectators] = clientIndex;
+    self->spectators = newSpectators;
+    ++self->numSpectators;
+    return 0;
+}
+
+static void chessRoom_removeSpectator(struct chessRoom *self, int32_t clientIndex) {
+    int32_t *current = &self->spectators[0];
+    for (;; ++current) {
+        assert(current < &self->spectators[self->numSpectators]);
+        if (*current == clientIndex) {
+            --self->numSpectators;
+            *current = self->spectators[self->numSpectators];
+            if (self->numSpectators == 0) return; // Probably not worth freeing completely.
+
+            int32_t *newSpectators = realloc(self->spectators, self->numSpectators * sizeof(int32_t));
+            if (newSpectators != NULL) self->spectators = newSpectators;
+            return;
+        }
+    }
 }
 
 static inline bool chessRoom_isOpen(struct chessRoom *self) {

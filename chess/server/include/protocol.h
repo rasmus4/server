@@ -1,12 +1,13 @@
 #pragma once
 
-#define protocol_VERSION 1
+#define protocol_VERSION 2
 
 enum protocol_clientOp {
     protocol_MOVE = 0,
     protocol_CREATE = 1,
     protocol_JOIN = 2,
-    protocol_BACK = 3
+    protocol_BACK = 3,
+    protocol_SPECTATE = 4
 };
 
 enum protocol_serverOp {

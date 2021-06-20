@@ -16,7 +16,12 @@ class Main {
             this.bufferDataView.setInt32(1, id, true);
             this.socket.send(this.bufferByteView.subarray(0, 5));
         };
-        this.homeView = new HomeView(this.onCreate, this.onJoin);
+        this.onSpectate = (id) => {
+            this.bufferDataView.setUint8(0, ProtocolClientOp.SPECTATE);
+            this.bufferDataView.setInt32(1, id, true);
+            this.socket.send(this.bufferByteView.subarray(0, 5));
+        };
+        this.homeView = new HomeView(this.onCreate, this.onJoin, this.onSpectate);
         this.onMove = (from, to) => {
             this.bufferDataView.setUint8(0, ProtocolClientOp.MOVE);
             this.bufferDataView.setUint8(1, from.x);
@@ -64,6 +69,7 @@ class Main {
                         this.setView(null);
                     } else {
                         // Perhaps the game updated, reload page.
+                        console.log("Reloading page...");
                         setTimeout(() => {
                             location.reload();
                         }, 1000);
