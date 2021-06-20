@@ -10,15 +10,12 @@ static char *buffer = NULL;
 static int32_t bufferLength = 0;
 
 static int replaceWithFile(int32_t replaceIndex, int32_t replaceLength, char *fileName, int32_t fileNameLength) {
-    int status;
     char *fileNameZ = malloc(fileNameLength + 1);
-    if (!fileNameZ) {
-        status = -1;
-        goto cleanup_none;
-    }
+    if (!fileNameZ) return -1;
     memcpy(fileNameZ, fileName, fileNameLength);
     fileNameZ[fileNameLength] = '\0';
 
+    int status;
     FILE *handle = fopen(fileNameZ, "r");
     if (!handle) {
         status = -2;
@@ -58,17 +55,14 @@ static int replaceWithFile(int32_t replaceIndex, int32_t replaceLength, char *fi
     fclose(handle);
     cleanup_fileNameZ:
     free(fileNameZ);
-    cleanup_none:
     return status;
 }
 
 static int writeToFile(char *fileName, char *content, int32_t contentLength) {
-    int status;
     FILE *handle = fopen(fileName, "w");
-    if (!handle) {
-        status = -1;
-        goto cleanup_none;
-    }
+    if (!handle) return -1;
+
+    int status;
     if (fwrite(content, 1, contentLength, handle) != (size_t)contentLength) {
         status = -2;
         goto cleanup_handle;
@@ -76,12 +70,10 @@ static int writeToFile(char *fileName, char *content, int32_t contentLength) {
     status = 0;
     cleanup_handle:
     fclose(handle);
-    cleanup_none:
     return status;
 }
 
 static int writeHeaderOutput(char *fileName, char *arrayName) {
-    int status;
     char start[] = "#pragma once\n#include <stdint.h>\nstatic uint8_t ";
     char afterName[] = "[] = {";
     char betweenBytes[] = ",";
@@ -97,10 +89,7 @@ static int writeHeaderOutput(char *fileName, char *arrayName) {
     );
 
     char *outBuffer = malloc(maxLength);
-    if (!outBuffer) {
-        status = -1;
-        goto cleanup_none;
-    }
+    if (!outBuffer) return -1;
     outBuffer[0] = '\0';
     strcat(outBuffer, start);
     strcat(outBuffer, arrayName);
@@ -112,7 +101,7 @@ static int writeHeaderOutput(char *fileName, char *arrayName) {
     }
     strcat(outBuffer, end);
 
-    status = writeToFile(fileName, outBuffer, strlen(outBuffer));
+    int status = writeToFile(fileName, outBuffer, strlen(outBuffer));
     if (status < 0) {
         status = -2;
         goto cleanup_outBuffer;
@@ -121,48 +110,36 @@ static int writeHeaderOutput(char *fileName, char *arrayName) {
     status = 0;
     cleanup_outBuffer:
     free(outBuffer);
-    cleanup_none:
     return status;
 }
 
 static int handleInclude(char *includeStartPattern, char *includeEndPattern) {
-    int status;
     char *includeStart = strstr(buffer, includeStartPattern);
-    if (!includeStart) {
-        status = 1;
-        goto cleanup_none;
-    }
+    if (!includeStart) return 1;
     char *includeEnd = strstr(includeStart, includeEndPattern);
     if (!includeEnd) {
         printf("Error: Unclosed include\n");
-        status = -1;
-        goto cleanup_none;
+        return -1;
     }
     char *name = &includeStart[strlen(includeStartPattern)];
     int32_t nameLength = (int32_t)(includeEnd - name);
-    status = replaceWithFile((int32_t)(includeStart - buffer), (int32_t)(includeEnd + strlen(includeEndPattern) - includeStart), name, nameLength);
+    int status = replaceWithFile((int32_t)(includeStart - buffer), (int32_t)(includeEnd + strlen(includeEndPattern) - includeStart), name, nameLength);
     if (status < 0) {
         printf("Error: Failed to include file %.*s (%d)\n", nameLength, name, status);
-        status = -2;
-        goto cleanup_none;
+        return -2;
     }
-    status = 0;
-    cleanup_none:
-    return status;
+    return 0;
 }
 
 int main(int argc, char **argv) {
-    int status;
     if (argc != 3) {
         printf("Usage: %s infile.html outname\n", argv[0]);
-        status = 1;
-        goto cleanup_none;
+        return 1;
     }
-    status = replaceWithFile(0, 0, argv[1], strlen(argv[1]));
+    int status = replaceWithFile(0, 0, argv[1], strlen(argv[1]));
     if (status < 0) {
         printf("Error: Failed to load initial file %s (%d)\n", argv[1], status);
-        status = 1;
-        goto cleanup_none;
+        return 1;
     }
 
     int complete = 0;
@@ -212,6 +189,5 @@ int main(int argc, char **argv) {
     free(outName);
     cleanup_buffer:
     free(buffer);
-    cleanup_none:
     return status;
 }

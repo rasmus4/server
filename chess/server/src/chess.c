@@ -182,8 +182,6 @@ static void chess_onTimer(void *self, int *timerHandle, uint64_t expirations) {
 #undef SELF
 
 static int chess_initFileResponse(struct chess *self) {
-    int status;
-
     int32_t digits = 1;
     int32_t magnitude = 10;
     while ((int32_t)sizeof(generatedHtml) >= magnitude) {
@@ -195,10 +193,7 @@ static int chess_initFileResponse(struct chess *self) {
     int32_t responseLength = (sizeof(responseHttpStart) - 1) + digits + (sizeof(responseHttpEnd) - 1) + sizeof(generatedHtml);
 
     uint8_t *responseBuffer = malloc(responseLength);
-    if (!responseBuffer) {
-        status = -1;
-        goto cleanup_none;
-    }
+    if (!responseBuffer) return -1;
 
     memcpy(responseBuffer, responseHttpStart, sizeof(responseHttpStart) - 1);
 
@@ -224,9 +219,7 @@ static int chess_initFileResponse(struct chess *self) {
         responseBuffer,
         responseLength
     );
-    status = 0;
-    cleanup_none:
-    return status;
+    return 0;
 }
 
 static inline void chess_deinitFileResponse(struct chess *self) {
@@ -234,16 +227,11 @@ static inline void chess_deinitFileResponse(struct chess *self) {
 }
 
 static int chess_init(struct chess *self) {
-    int status;
-
     for (int i = 0; i < server_MAX_CLIENTS; ++i) {
         chessRoom_create(&self->rooms[i], i);
     }
 
-    if (chess_initFileResponse(self) < 0) {
-        status = -1;
-        goto cleanup_none;
-    }
+    if (chess_initFileResponse(self) < 0) return -1;
 
     struct serverCallbacks callbacks;
     serverCallbacks_create(
@@ -255,6 +243,7 @@ static int chess_init(struct chess *self) {
         chess_onTimer
     );
 
+    int status;
     if (server_init(&self->server, &self->response, 1, &callbacks) < 0) {
         status = -2;
         goto cleanup_response;
@@ -263,7 +252,6 @@ static int chess_init(struct chess *self) {
 
     cleanup_response:
     chess_deinitFileResponse(self);
-    cleanup_none:
     return status;
 }
 

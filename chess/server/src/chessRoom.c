@@ -221,11 +221,15 @@ static void chessRoom_doMove(struct chessRoom *self, int32_t fromX, int32_t from
         timeSpent = self->host.timeSpent;
         self->hostsTurn = true;
     }
-    struct itimerspec spec = {
-        .it_interval.tv_sec = 1,
-        .it_value = timespec_fromNanoseconds(currentTime + (int64_t)1000000000 - (timeSpent % 1000000000))
-    };
-    server_startTimer(self->secondTimerHandle, &spec, true);
+    if (chessRoom_winner(self) == protocol_NO_WIN) {
+        struct itimerspec spec = {
+            .it_interval.tv_sec = 1,
+            .it_value = timespec_fromNanoseconds(currentTime + (int64_t)1000000000 - (timeSpent % 1000000000))
+        };
+        server_startTimer(self->secondTimerHandle, &spec, true);
+    } else {
+        server_stopTimer(self->secondTimerHandle);
+    }
 }
 
 static inline void chessRoom_updateTimeSpent(struct chessRoom *self, int64_t currentTime) {

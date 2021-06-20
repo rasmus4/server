@@ -13,8 +13,6 @@
 static struct chess main_chess;
 
 int main(int argc, char **argv) {
-    int status;
-
     struct timespec currentTime;
     clock_gettime(CLOCK_MONOTONIC, &currentTime);
     unsigned int seed = timespec_toNanoseconds(currentTime) % UINT_MAX;
@@ -29,15 +27,13 @@ int main(int argc, char **argv) {
 
     if (prctl(PR_SET_TIMERSLACK, 1) < 0) {
         printf("Failed to set timer slack\n");
-        status = 1;
-        goto cleanup_none;
+        return 1;
     }
 
-    status = chess_init(&main_chess);
+    int status = chess_init(&main_chess);
     if (status < 0) {
         printf("Failed to initialize chess (%d)\n", status);
-        status = 1;
-        goto cleanup_none;
+        return 1;
     }
 
     status = chess_run(&main_chess);
@@ -49,6 +45,5 @@ int main(int argc, char **argv) {
     status = 0;
     cleanup_chess:
     chess_deinit(&main_chess);
-    cleanup_none:
     return status;
 }
