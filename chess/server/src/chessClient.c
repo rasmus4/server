@@ -14,6 +14,7 @@ static void chessClient_create(struct chessClient *self, struct serverClient *cl
 
 static inline void chessClient_setRoom(struct chessClient *self, struct chessRoom *room) {
     self->room = room;
+    self->move = room->numMoves;
 }
 
 static inline void chessClient_unsetRoom(struct chessClient *self) {
@@ -41,10 +42,14 @@ static inline bool chessClient_isSpectator(struct chessClient *self) {
     return !chessClient_isHost(self) && !chessClient_isGuest(self);
 }
 
-static inline int chessClient_scrollMoveOffset(struct chessClient *self, bool forward) {
-    int32_t newOffset = self->moveOffset + (forward ? 1 : -1);
-    if (newOffset > 0 || newOffset < -self->room->numMoves) return 1;
-    self->moveOffset = newOffset;
+static inline void chessClient_followNewMove(struct chessClient *self) {
+    if (self->move == self->room->numMoves - 1) ++self->move;
+}
+
+static inline int chessClient_scrollMove(struct chessClient *self, bool forward) {
+    int32_t newMove = self->move + (forward ? 1 : -1);
+    if (newMove > self->room->numMoves || newMove < 0) return 1;
+    self->move = newMove;
     return 0;
 }
 
@@ -59,8 +64,7 @@ static int32_t chessClient_writeState(struct chessClient *self, uint8_t *buffer)
         buffer[1] = chessRoom_isHostsTurn(self->room) ? 1 : 0;
         buffer[2] = chessRoom_winner(self->room);
 
-        int32_t move = self->room->numMoves + self->moveOffset;
-        struct chessRoom_move currentMove = chessRoom_getMove(self->room, move, hostPov);
+        struct chessRoom_move currentMove = chessRoom_getMove(self->room, self->move, hostPov);
         buffer[3] = currentMove.fromIndex;
         buffer[4] = currentMove.toIndex;
 
@@ -69,7 +73,7 @@ static int32_t chessClient_writeState(struct chessClient *self, uint8_t *buffer)
         memcpy(&buffer[5], &timeSpent, 8);
         memcpy(&buffer[13], &opponentTimeSpent, 8);
 
-        chessRoom_getBoard(self->room, move, hostPov, &buffer[21]);
+        chessRoom_getBoard(self->room, self->move, hostPov, &buffer[21]);
         return chessClient_writeState_MAX;
     }
     buffer[0] = protocol_ROOM;

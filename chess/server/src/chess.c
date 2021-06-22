@@ -127,7 +127,7 @@ static int chess_handleMove(struct chess *self, struct chessClient *chessClient,
     if (!chessRoom_isFull(room)) return 0;
 
     // Don't let player move unless they are viewing last move.
-    if (chessClient->moveOffset != 0) return 0;
+    if (chessClient->move != room->numMoves) return 0;
 
     bool isHost = chessClient_isHost(chessClient);
     if (isHost != chessRoom_isHostsTurn(chessClient->room)) return 0; // Not players turn.
@@ -141,17 +141,19 @@ static int chess_handleMove(struct chess *self, struct chessClient *chessClient,
         chessRoom_doMove(room, fromX, fromY, toX, toY, isHost);
 
         struct chessClient *opponent = isHost ? room->guest.client : room->host.client;
+        chessClient_followNewMove(opponent);
         if (chess_sendClientState(self, opponent) < 0) {
             server_closeClient(&self->server, opponent->serverClient);
         }
 
         for (int32_t i = 0; i < room->numSpectators; ++i) {
             struct chessClient *spectator = &self->clients[room->spectators[i]];
+            chessClient_followNewMove(spectator);
             if (chess_sendClientState(self, spectator) < 0) {
                 server_closeClient(&self->server, spectator->serverClient);
             }
         }
-
+        chessClient_followNewMove(chessClient);
         if (chess_sendClientState(self, chessClient) < 0) return -2;
     }
     return 0;
@@ -170,7 +172,7 @@ static int chess_handleScroll(struct chess *self, struct chessClient *chessClien
     struct chessRoom *room = chessClient->room;
     if (!chessRoom_isFull(room)) return 0;
     uint8_t up = message[1];
-    if (chessClient_scrollMoveOffset(chessClient, !up) == 0) {
+    if (chessClient_scrollMove(chessClient, !up) == 0) {
         if (chess_sendClientState(self, chessClient) < 0) return -2;
     }
     return 0;
