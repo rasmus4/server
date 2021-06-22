@@ -10,7 +10,7 @@ class Main {
         this.onCreate = () => {
             this.bufferDataView.setUint8(0, ProtocolClientOp.CREATE);
             this.socket.send(this.bufferByteView.subarray(0, 1));
-        }
+        };
         this.onJoin = (id) => {
             this.bufferDataView.setUint8(0, ProtocolClientOp.JOIN);
             this.bufferDataView.setInt32(1, id, true);
@@ -29,12 +29,17 @@ class Main {
             this.bufferDataView.setUint8(3, to.x);
             this.bufferDataView.setUint8(4, to.y);
             this.socket.send(this.bufferByteView.subarray(0, 5));
-        }
+        };
         this.onBack = () => {
             this.bufferDataView.setUint8(0, ProtocolClientOp.BACK);
             this.socket.send(this.bufferByteView.subarray(0, 1));
-        }
-        this.chessView = new ChessView(this.onMove, this.onBack);
+        };
+        this.onScroll = (up) => {
+            this.bufferDataView.setUint8(0, ProtocolClientOp.SCROLL);
+            this.bufferDataView.setUint8(1, up ? 1 : 0);
+            this.socket.send(this.bufferByteView.subarray(0, 2));
+        };
+        this.chessView = new ChessView(this.onMove, this.onBack, this.onScroll);
         this.connectingView = new ConnectingView();
 
         this.roomView = new RoomView(this.onBack);

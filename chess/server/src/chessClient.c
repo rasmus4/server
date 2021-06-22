@@ -41,6 +41,13 @@ static inline bool chessClient_isSpectator(struct chessClient *self) {
     return !chessClient_isHost(self) && !chessClient_isGuest(self);
 }
 
+static inline int chessClient_scrollMoveOffset(struct chessClient *self, bool forward) {
+    int32_t newOffset = self->moveOffset + (forward ? 1 : -1);
+    if (newOffset > 0 || newOffset < -self->room->numMoves) return 1;
+    self->moveOffset = newOffset;
+    return 0;
+}
+
 static int32_t chessClient_writeState(struct chessClient *self, uint8_t *buffer) {
     if (!chessClient_inRoom(self)) {
         buffer[0] = protocol_HOME;
@@ -52,7 +59,7 @@ static int32_t chessClient_writeState(struct chessClient *self, uint8_t *buffer)
         buffer[1] = chessRoom_isHostsTurn(self->room) ? 1 : 0;
         buffer[2] = chessRoom_winner(self->room);
 
-        int32_t move = self->room->numMoves;
+        int32_t move = self->room->numMoves + self->moveOffset;
         struct chessRoom_move currentMove = chessRoom_getMove(self->room, move, hostPov);
         buffer[3] = currentMove.fromIndex;
         buffer[4] = currentMove.toIndex;

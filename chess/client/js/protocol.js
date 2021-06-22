@@ -7,7 +7,8 @@ const ProtocolClientOp = {
     CREATE: 1,
     JOIN: 2,
     BACK: 3,
-    SPECTATE: 4
+    SPECTATE: 4,
+    SCROLL: 5
 };
 
 const ProtocolServerOp = {

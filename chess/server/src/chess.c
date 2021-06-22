@@ -59,15 +59,15 @@ static void chess_leaveRoom(struct chess *self, struct chessClient *chessClient)
 }
 
 static int chess_handleCreate(struct chess *self, struct chessClient *chessClient, uint8_t *message, int32_t messageLength) {
-    if (chessClient_inRoom(chessClient)) return -1;
+    if (chessClient_inRoom(chessClient)) return 0;
     if (chess_createRoom(self, chessClient) < 0) return 0; // Not client's fault.
-    if (chess_sendClientState(self, chessClient) < 0) return -2;
+    if (chess_sendClientState(self, chessClient) < 0) return -1;
     return 0;
 }
 
 static int chess_handleJoin(struct chess *self, struct chessClient *chessClient, uint8_t *message, int32_t messageLength) {
     if (messageLength != 5) return -1;
-    if (chessClient_inRoom(chessClient)) return -2;
+    if (chessClient_inRoom(chessClient)) return 0;
     int32_t roomId;
     memcpy(&roomId, &message[1], 4);
 
@@ -89,13 +89,13 @@ static int chess_handleJoin(struct chess *self, struct chessClient *chessClient,
     if (chess_sendClientState(self, room->host.client) < 0) {
         server_closeClient(&self->server, room->host.client->serverClient);
     }
-    if (chess_sendClientState(self, chessClient) < 0) return -3;
+    if (chess_sendClientState(self, chessClient) < 0) return -2;
     return 0;
 }
 
 static int chess_handleSpectate(struct chess *self, struct chessClient *chessClient, uint8_t *message, int32_t messageLength) {
     if (messageLength != 5) return -1;
-    if (chessClient_inRoom(chessClient)) return -2;
+    if (chessClient_inRoom(chessClient)) return 0;
     int32_t roomId;
     memcpy(&roomId, &message[1], 4);
 
@@ -114,17 +114,20 @@ static int chess_handleSpectate(struct chess *self, struct chessClient *chessCli
     if (chessRoom_addSpectator(room, chessClient->serverClient->index) < 0) return 0;
     chessClient_setRoom(chessClient, room);
 
-    if (chess_sendClientState(self, chessClient) < 0) return -3;
+    if (chess_sendClientState(self, chessClient) < 0) return -2;
     return 0;
 }
 
 static int chess_handleMove(struct chess *self, struct chessClient *chessClient, uint8_t *message, int32_t messageLength) {
     if (messageLength != 5) return -1;
-    if (!chessClient_inRoom(chessClient)) return -2;
+    if (!chessClient_inRoom(chessClient)) return 0;
     if (chessClient_isSpectator(chessClient)) return 0;
 
     struct chessRoom *room = chessClient->room;
-    if (!chessRoom_isFull(room)) return -3;
+    if (!chessRoom_isFull(room)) return 0;
+
+    // Don't let player move unless they are viewing last move.
+    if (chessClient->moveOffset != 0) return 0;
 
     bool isHost = chessClient_isHost(chessClient);
     if (isHost != chessRoom_isHostsTurn(chessClient->room)) return 0; // Not players turn.
@@ -149,15 +152,27 @@ static int chess_handleMove(struct chess *self, struct chessClient *chessClient,
             }
         }
 
-        if (chess_sendClientState(self, chessClient) < 0) return -4;
+        if (chess_sendClientState(self, chessClient) < 0) return -2;
     }
     return 0;
 }
 
 static int chess_handleBack(struct chess *self, struct chessClient *chessClient, uint8_t *message, int32_t messageLength) {
-    if (!chessClient_inRoom(chessClient)) return -1;
+    if (!chessClient_inRoom(chessClient)) return 0;
     chess_leaveRoom(self, chessClient);
-    if (chess_sendClientState(self, chessClient) < 0) return -2;
+    if (chess_sendClientState(self, chessClient) < 0) return -1;
+    return 0;
+}
+
+static int chess_handleScroll(struct chess *self, struct chessClient *chessClient, uint8_t *message, int32_t messageLength) {
+    if (messageLength != 2) return -1;
+    if (!chessClient_inRoom(chessClient)) return 0;
+    struct chessRoom *room = chessClient->room;
+    if (!chessRoom_isFull(room)) return 0;
+    uint8_t up = message[1];
+    if (chessClient_scrollMoveOffset(chessClient, !up) == 0) {
+        if (chess_sendClientState(self, chessClient) < 0) return -2;
+    }
     return 0;
 }
 
@@ -210,6 +225,11 @@ static int chess_onMessage(void *self, struct serverClient *client, uint8_t *mes
         case protocol_SPECTATE: {
             status = chess_handleSpectate(SELF, chessClient, message, messageLength);
             if (status < 0) printf("Error joining room as spectator: %d", status);
+            break;
+        }
+        case protocol_SCROLL: {
+            status = chess_handleScroll(SELF, chessClient, message, messageLength);
+            if (status < 0) printf("Error scrolling: %d", status);
             break;
         }
         default: {

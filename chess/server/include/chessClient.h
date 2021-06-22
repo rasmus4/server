@@ -10,6 +10,7 @@ struct serverClient;
 struct chessClient {
     struct serverClient *serverClient;
     struct chessRoom *room;
+    int32_t moveOffset; // Offset from last move, always negative or 0.
 };
 
 static void chessClient_create(struct chessClient *self, struct serverClient *client);
@@ -20,6 +21,9 @@ static inline bool chessClient_inRoom(struct chessClient *self);
 static inline bool chessClient_isHost(struct chessClient *self);
 static inline bool chessClient_isGuest(struct chessClient *self);
 static inline bool chessClient_isSpectator(struct chessClient *self);
+
+// Returns 0 if could scroll, else 1.
+static inline int chessClient_scrollMoveOffset(struct chessClient *self, bool forward);
 
 #define chessClient_writeState_MAX 85
 // Returns length written, max `chessClient_writeState_MAX` bytes.

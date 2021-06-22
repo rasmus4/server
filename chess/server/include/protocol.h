@@ -7,7 +7,8 @@ enum protocol_clientOp {
     protocol_CREATE = 1,
     protocol_JOIN = 2,
     protocol_BACK = 3,
-    protocol_SPECTATE = 4
+    protocol_SPECTATE = 4,
+    protocol_SCROLL = 5
 };
 
 enum protocol_serverOp {
