@@ -51,20 +51,18 @@ static int32_t chessClient_writeState(struct chessClient *self, uint8_t *buffer)
         buffer[0] = protocol_CHESS;
         buffer[1] = chessRoom_isHostsTurn(self->room) ? 1 : 0;
         buffer[2] = chessRoom_winner(self->room);
-        buffer[3] = chessRoom_lastMoveFromIndex(self->room, hostPov);
-        buffer[4] = chessRoom_lastMoveToIndex(self->room, hostPov);
+
+        int32_t move = self->room->numMoves;
+        struct chessRoom_move currentMove = chessRoom_getMove(self->room, move, hostPov);
+        buffer[3] = currentMove.fromIndex;
+        buffer[4] = currentMove.toIndex;
+
         int64_t timeSpent = chessRoom_timeSpent(self->room, hostPov);
         int64_t opponentTimeSpent = chessRoom_timeSpent(self->room, !hostPov);
         memcpy(&buffer[5], &timeSpent, 8);
         memcpy(&buffer[13], &opponentTimeSpent, 8);
-        if (hostPov) {
-            memcpy(&buffer[21], &self->room->board[0], 64);
-        } else {
-            // Flip the board for black.
-            for (int i = 0; i < 64; ++i) {
-                buffer[21 + 63 - i] = self->room->board[i];
-            }
-        }
+
+        chessRoom_getBoard(self->room, move, hostPov, &buffer[21]);
         return chessClient_writeState_MAX;
     }
     buffer[0] = protocol_ROOM;

@@ -14,7 +14,7 @@ static int chess_sendClientState(struct chess *self, struct chessClient *chessCl
     return 0;
 }
 
-static void chess_createRoom(struct chess *self, struct chessClient *chessClient) {
+static int chess_createRoom(struct chess *self, struct chessClient *chessClient) {
     struct chessRoom *room = &self->rooms[0];
     // Atleast one room is guaranteed to be empty.
     for (;; ++room) {
@@ -24,8 +24,9 @@ static void chess_createRoom(struct chess *self, struct chessClient *chessClient
     // Note: Relies on server_MAX_CLIENTS being power of 2!
     int32_t randomPart = rand() & ~(server_MAX_CLIENTS - 1);
     randomPart &= 0x000FFFFF; // We don't need that much randomness.
-    chessRoom_open(room, chessClient, randomPart | room->index);
+    if (chessRoom_open(room, chessClient, randomPart | room->index, &self->server) < 0) return -1;
     chessClient_setRoom(chessClient, room);
+    return 0;
 }
 
 static void chess_leaveRoom(struct chess *self, struct chessClient *chessClient) {
@@ -59,7 +60,7 @@ static void chess_leaveRoom(struct chess *self, struct chessClient *chessClient)
 
 static int chess_handleCreate(struct chess *self, struct chessClient *chessClient, uint8_t *message, int32_t messageLength) {
     if (chessClient_inRoom(chessClient)) return -1;
-    chess_createRoom(self, chessClient);
+    if (chess_createRoom(self, chessClient) < 0) return 0; // Not client's fault.
     if (chess_sendClientState(self, chessClient) < 0) return -2;
     return 0;
 }
@@ -82,7 +83,7 @@ static int chess_handleJoin(struct chess *self, struct chessClient *chessClient,
     found:
     if (chessRoom_isFull(room)) return 0; // Already full.
 
-    if (chessRoom_start(room, chessClient, &self->server) < 0) return 0; // Not the client's fault.
+    chessRoom_start(room, chessClient);
     chessClient_setRoom(chessClient, room);
 
     if (chess_sendClientState(self, room->host.client) < 0) {
@@ -311,16 +312,12 @@ static int chess_init(struct chess *self) {
         chess_onTimer
     );
 
-    int status;
-    if (server_init(&self->server, &self->response, 1, &callbacks) < 0) {
-        status = -2;
-        goto cleanup_response;
-    }
+    if (server_init(&self->server, &self->response, 1, &callbacks) < 0) goto cleanup_response;
     return 0;
 
     cleanup_response:
     chess_deinitFileResponse(self);
-    return status;
+    return -2;
 }
 
 static void chess_deinit(struct chess *self) {

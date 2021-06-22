@@ -6,6 +6,8 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
 #include <assert.h>
 
 static void chessRoom_initBoard(struct chessRoom *self) {
@@ -24,47 +26,74 @@ static void chessRoom_initBoard(struct chessRoom *self) {
     self->board[59] = protocol_QUEEN;
     self->board[60] = protocol_KING;
     for (int i = 0; i < 8; ++i) self->board[48 + i] = protocol_PAWN;
-
-    self->lastMoveFromIndex = -1;
-    self->lastMoveToIndex = -1;
 }
 
-static inline int32_t chessRoom_convertIndex(int32_t index, bool hostsPov) {
-    return hostsPov ? index : 63 - index;
+static inline int32_t chessRoom_convertIndex(int32_t index, bool hostPov) {
+    return hostPov ? index : 63 - index;
 }
 
-static inline int32_t chessRoom_xyToIndex(int32_t x, int32_t y, bool hostsPov) {
-    return chessRoom_convertIndex(y * 8 + x, hostsPov);
+static inline int32_t chessRoom_xyToIndex(int32_t x, int32_t y, bool hostPov) {
+    return chessRoom_convertIndex(y * 8 + x, hostPov);
 }
 
-static inline int32_t chessRoom_lastMoveFromIndex(struct chessRoom *self, bool hostsPov) {
-    return chessRoom_convertIndex(self->lastMoveFromIndex, hostsPov);
+static struct chessRoom_move chessRoom_getMove(struct chessRoom *self, int32_t move, bool hostPov) {
+    assert(move >= 0 && move <= self->numMoves);
+    struct chessRoom_move convertedMove;
+    if (move == 0) {
+        convertedMove = (struct chessRoom_move) {
+            .fromIndex = -1,
+            .toIndex = -1
+        };
+    } else {
+        --move;
+        convertedMove = (struct chessRoom_move) {
+            .fromIndex = chessRoom_convertIndex(self->moves[move].fromIndex, hostPov),
+            .toIndex = chessRoom_convertIndex(self->moves[move].toIndex, hostPov),
+            .piece = self->moves[move].piece,
+            .replacePiece = self->moves[move].replacePiece
+        };
+    }
+    return convertedMove;
 }
 
-static inline int32_t chessRoom_lastMoveToIndex(struct chessRoom *self, bool hostsPov) {
-    return chessRoom_convertIndex(self->lastMoveToIndex, hostsPov);
+static void chessRoom_getBoard(struct chessRoom *self, int32_t move, bool hostPov, uint8_t *outBoard) {
+    assert(move >= 0 && move <= self->numMoves);
+    memcpy(&outBoard[0], &self->board[0], 64);
+    for (int32_t current = self->numMoves - 1; current >= move; --current) {
+        struct chessRoom_move *move = &self->moves[current];
+        outBoard[move->fromIndex] = move->piece;
+        outBoard[move->toIndex] = move->replacePiece;
+    }
+    if (!hostPov) {
+        // Reverse board.
+        for (int32_t i = 0; i < 64 / 2; ++i) {
+            uint8_t temp = outBoard[i];
+            outBoard[i] = outBoard[63 - i];
+            outBoard[63 - i] = temp;
+        }
+    }
 }
 
-static inline bool chessRoom_diagonalAndFree(struct chessRoom *self, int32_t fromX, int32_t fromY, int32_t toX, int32_t toY, bool hostsPov) {
+static inline bool chessRoom_diagonalAndFree(struct chessRoom *self, int32_t fromX, int32_t fromY, int32_t toX, int32_t toY, bool hostPov) {
     if (abs(toX - fromX) != abs(toY - fromY)) return false;
     int32_t signX = toX > fromX ? 1 : -1;
     int32_t signY = toY > fromY ? 1 : -1;
     for (fromX += signX, fromY += signY; fromX != toX; fromX += signX, fromY += signY) {
-        if (self->board[chessRoom_xyToIndex(fromX, fromY, hostsPov)] != protocol_NO_PIECE) return false;
+        if (self->board[chessRoom_xyToIndex(fromX, fromY, hostPov)] != protocol_NO_PIECE) return false;
     }
     return true;
 }
 
-static inline bool chessRoom_straightAndFree(struct chessRoom *self, int32_t fromX, int32_t fromY, int32_t toX, int32_t toY, bool hostsPov) {
+static inline bool chessRoom_straightAndFree(struct chessRoom *self, int32_t fromX, int32_t fromY, int32_t toX, int32_t toY, bool hostPov) {
     if (toX != fromX && toY == fromY) {
         int signX = toX > fromX ? 1 : -1;
         for (fromX += signX; fromX != toX; fromX += signX) {
-            if (self->board[chessRoom_xyToIndex(fromX, fromY, hostsPov)] != protocol_NO_PIECE) return false;
+            if (self->board[chessRoom_xyToIndex(fromX, fromY, hostPov)] != protocol_NO_PIECE) return false;
         }
     } else if (toY != fromY && toX == fromX) {
         int signY = toY > fromY ? 1 : -1;
         for (fromY += signY; fromY != toY; fromY += signY) {
-            if (self->board[chessRoom_xyToIndex(fromX, fromY, hostsPov)] != protocol_NO_PIECE) return false;
+            if (self->board[chessRoom_xyToIndex(fromX, fromY, hostPov)] != protocol_NO_PIECE) return false;
         }
     } else return false;
     return true;
@@ -83,35 +112,40 @@ static inline void chessRoom_create(struct chessRoom *self, int32_t index) {
     self->guest.client = NULL;
 }
 
-static inline void chessRoom_open(struct chessRoom *self, struct chessClient *host, int32_t roomId) {
+static int chessRoom_open(struct chessRoom *self, struct chessClient *host, int32_t roomId, struct server *server) {
     self->host.client = host;
     self->roomId = roomId;
     self->spectators = NULL;
     self->numSpectators = 0;
-    self->secondTimerHandle = 0;
+    if (server_createTimer(server, &self->secondTimerHandle) < 0) return -1;
+
+    self->moves = malloc(sizeof(self->moves[0])); // Need to be able to hold last move at least.
+    if (self->moves == NULL) goto cleanup_secondTimer;
+    return 0;
+
+    cleanup_secondTimer:
+    server_destroyTimer(self->secondTimerHandle);
+    return -2;
 }
 
-static inline void chessRoom_close(struct chessRoom *self) {
+static void chessRoom_close(struct chessRoom *self) {
     self->host.client = NULL;
     self->guest.client = NULL;
-    if (self->secondTimerHandle != 0) {
-        server_destroyTimer(self->secondTimerHandle);
-        self->secondTimerHandle = 0;
-    }
+    free(self->moves);
+    server_destroyTimer(self->secondTimerHandle);
     assert(self->numSpectators == 0);
     free(self->spectators);
 }
 
-static int chessRoom_start(struct chessRoom *self, struct chessClient *guest, struct server *server) {
-    if (server_createTimer(server, &self->secondTimerHandle) < 0) return -1;
-
+static void chessRoom_start(struct chessRoom *self, struct chessClient *guest) {
     self->guest.client = guest;
     self->winner = protocol_NO_WIN;
     self->hostsTurn = true;
-    chessRoom_initBoard(self);
-
+    self->numMoves = 0;
     self->host.timeSpent = 0;
     self->guest.timeSpent = 0;
+
+    chessRoom_initBoard(self);
 
     struct timespec currentTimespec;
     clock_gettime(CLOCK_MONOTONIC, &currentTimespec);
@@ -123,12 +157,11 @@ static int chessRoom_start(struct chessRoom *self, struct chessClient *guest, st
         .it_value.tv_nsec = currentTimespec.tv_nsec
     };
     server_startTimer(self->secondTimerHandle, &spec, true);
-    return 0;
 }
 
 static int chessRoom_addSpectator(struct chessRoom *self, int32_t clientIndex) {
     if (self->numSpectators == INT32_MAX) return -1; // Never know ;)
-    int32_t *newSpectators = realloc(self->spectators, (self->numSpectators + 1) * sizeof(int32_t));
+    int32_t *newSpectators = realloc(self->spectators, (self->numSpectators + 1) * sizeof(self->spectators[0]));
     if (newSpectators == NULL) return -2;
 
     newSpectators[self->numSpectators] = clientIndex;
@@ -146,7 +179,7 @@ static void chessRoom_removeSpectator(struct chessRoom *self, int32_t clientInde
             *current = self->spectators[self->numSpectators];
             if (self->numSpectators == 0) return; // Probably not worth freeing completely.
 
-            int32_t *newSpectators = realloc(self->spectators, self->numSpectators * sizeof(int32_t));
+            int32_t *newSpectators = realloc(self->spectators, self->numSpectators * sizeof(self->spectators[0]));
             if (newSpectators != NULL) self->spectators = newSpectators;
             return;
         }
@@ -169,7 +202,7 @@ static inline enum protocol_winner chessRoom_winner(struct chessRoom *self) {
     return self->winner;
 }
 
-static bool chessRoom_isMoveValid(struct chessRoom *self, int32_t fromX, int32_t fromY, int32_t toX, int32_t toY, bool hostsPov) {
+static bool chessRoom_isMoveValid(struct chessRoom *self, int32_t fromX, int32_t fromY, int32_t toX, int32_t toY, bool hostPov) {
     if (self->winner != protocol_NO_WIN) return false;
 
     if (
@@ -181,25 +214,25 @@ static bool chessRoom_isMoveValid(struct chessRoom *self, int32_t fromX, int32_t
 
     if (fromX == toX && fromY == toY) return false;
 
-    uint8_t piece = chessRoom_pieceAt(self, fromX, fromY, hostsPov);
+    uint8_t piece = chessRoom_pieceAt(self, fromX, fromY, hostPov);
     if (piece == protocol_NO_PIECE) return false;
     bool hostsPiece = piece & protocol_WHITE_FLAG;
-    if (hostsPiece != hostsPov) return false;
+    if (hostsPiece != hostPov) return false;
 
-    uint8_t destPiece = chessRoom_pieceAt(self, toX, toY, hostsPov);
+    uint8_t destPiece = chessRoom_pieceAt(self, toX, toY, hostPov);
     if (destPiece != protocol_NO_PIECE) {
         bool hostsDestPiece = destPiece & protocol_WHITE_FLAG;
-        if (hostsDestPiece == hostsPov) return false; // Can't take ur own pieces.
+        if (hostsDestPiece == hostPov) return false; // Can't take ur own pieces.
     }
 
     switch (piece & protocol_PIECE_MASK) {
         case protocol_KING: return chessRoom_distance(fromX, fromY, toX, toY) == 1;
         case protocol_QUEEN: return (
-            chessRoom_diagonalAndFree(self, fromX, fromY, toX, toY, hostsPov) ||
-            chessRoom_straightAndFree(self, fromX, fromY, toX, toY, hostsPov)
+            chessRoom_diagonalAndFree(self, fromX, fromY, toX, toY, hostPov) ||
+            chessRoom_straightAndFree(self, fromX, fromY, toX, toY, hostPov)
         );
-        case protocol_BISHOP: return chessRoom_diagonalAndFree(self, fromX, fromY, toX, toY, hostsPov);
-        case protocol_ROOK: return chessRoom_straightAndFree(self, fromX, fromY, toX, toY, hostsPov);
+        case protocol_BISHOP: return chessRoom_diagonalAndFree(self, fromX, fromY, toX, toY, hostPov);
+        case protocol_ROOK: return chessRoom_straightAndFree(self, fromX, fromY, toX, toY, hostPov);
         case protocol_KNIGHT: {
             int32_t dxAbs = abs(toX - fromX);
             int32_t dyAbs = abs(toY - fromY);
@@ -219,23 +252,46 @@ static bool chessRoom_isMoveValid(struct chessRoom *self, int32_t fromX, int32_t
     }
 }
 
-static void chessRoom_doMove(struct chessRoom *self, int32_t fromX, int32_t fromY, int32_t toX, int32_t toY, bool hostsPov) {
-    int32_t fromIndex = chessRoom_xyToIndex(fromX, fromY, hostsPov);
+static inline void chessRoom_updateMoves(struct chessRoom *self, struct chessRoom_move *lastMove) {
+    if (self->numMoves != 0) { // Space for first move is guaranteed from `chessRoom_open`.
+        struct chessRoom_move *newMoves;
+        if (
+            self->numMoves == INT32_MAX || // ...
+            (newMoves = realloc(self->moves, (self->numMoves + 1) * sizeof(self->moves[0]))) == NULL
+        ) {
+            // Forget oldest move.
+            memmove(&self->moves[0], &self->moves[1], (self->numMoves - 1) * (sizeof(self->moves[0])));
+            self->moves[self->numMoves - 1] = *lastMove;
+            return;
+        }
+        self->moves = newMoves;
+    }
+    self->moves[self->numMoves] = *lastMove;
+    ++self->numMoves;
+}
 
-    uint8_t piece = self->board[fromIndex];
-    uint8_t destPiece;
-    if (toY == 7 && (piece & protocol_PIECE_MASK) == protocol_PAWN) destPiece = protocol_QUEEN | (piece & protocol_WHITE_FLAG); // Promotion
-    else destPiece = piece;
+static void chessRoom_doMove(struct chessRoom *self, int32_t fromX, int32_t fromY, int32_t toX, int32_t toY, bool hostPov) {
+    int32_t fromIndex = chessRoom_xyToIndex(fromX, fromY, hostPov);
+    int32_t toIndex = chessRoom_xyToIndex(toX, toY, hostPov);
+    struct chessRoom_move move = {
+        .fromIndex = fromIndex,
+        .toIndex = toIndex,
+        .piece = self->board[fromIndex],
+        .replacePiece = self->board[toIndex]
+    };
 
-    int32_t toIndex = chessRoom_xyToIndex(toX, toY, hostsPov);
-    if ((self->board[toIndex] & protocol_PIECE_MASK) == protocol_KING) { // Win
-        if (self->board[toIndex] & protocol_WHITE_FLAG) self->winner = protocol_BLACK_WIN;
+    if ((move.replacePiece & protocol_PIECE_MASK) == protocol_KING) { // Win
+        if (move.replacePiece & protocol_WHITE_FLAG) self->winner = protocol_BLACK_WIN;
         else self->winner = protocol_WHITE_WIN;
     }
-    self->board[toIndex] = destPiece;
+
+    uint8_t newPiece;
+    if (toY == 7 && (move.piece & protocol_PIECE_MASK) == protocol_PAWN) newPiece = protocol_QUEEN | (move.piece & protocol_WHITE_FLAG); // Promotion
+    else newPiece = move.piece;
+
+    self->board[toIndex] = newPiece;
     self->board[fromIndex] = protocol_NO_PIECE;
-    self->lastMoveFromIndex = fromIndex;
-    self->lastMoveToIndex = toIndex;
+    chessRoom_updateMoves(self, &move);
 
     struct timespec currentTimespec;
     clock_gettime(CLOCK_MONOTONIC, &currentTimespec);
@@ -274,11 +330,11 @@ static inline void chessRoom_updateTimeSpent(struct chessRoom *self, int64_t cur
     }
 }
 
-static inline int64_t chessRoom_timeSpent(struct chessRoom *self, bool hostsPov) {
-    if (hostsPov) return self->host.timeSpent;
+static inline int64_t chessRoom_timeSpent(struct chessRoom *self, bool hostPov) {
+    if (hostPov) return self->host.timeSpent;
     return self->guest.timeSpent;
 }
 
-static uint8_t chessRoom_pieceAt(struct chessRoom *self, int32_t x, int32_t y, bool hostsPov) {
-    return self->board[chessRoom_xyToIndex(x, y, hostsPov)];
+static uint8_t chessRoom_pieceAt(struct chessRoom *self, int32_t x, int32_t y, bool hostPov) {
+    return self->board[chessRoom_xyToIndex(x, y, hostPov)];
 }
