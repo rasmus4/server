@@ -17,7 +17,7 @@ struct server {
     struct fileResponse *fileResponses;
     int32_t fileResponsesLength;
     struct serverCallbacks callbacks;
-    uint8_t scratchSpace[1024];
+    uint8_t scratchSpace[512];
 };
 
 static int server_init(

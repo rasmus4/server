@@ -13,7 +13,6 @@
 #include <sys/types.h>
 #include <sys/epoll.h>
 #include <fcntl.h>
-#include <errno.h>
 
 #define server_WEBSOCKET_ACCEPT_START \
     "HTTP/1.1 101 Switching Protocols\r\n" \
@@ -261,10 +260,10 @@ static int server_handleHttpRequest(struct server *self, struct serverClient *cl
             SHA1Context sha1Context;
             SHA1Reset(&sha1Context);
             SHA1Input(&sha1Context, self->scratchSpace, 24 + 36);
-            SHA1Result(&sha1Context, &self->scratchSpace[512]);
+            SHA1Result(&sha1Context, &self->scratchSpace[256]);
 
             memcpy(&self->scratchSpace[0], server_WEBSOCKET_ACCEPT_START, server_WEBSOCKET_ACCEPT_START_LEN);
-            int32_t base64Len = base64_encode(&self->scratchSpace[512], SHA1HashSize, &self->scratchSpace[server_WEBSOCKET_ACCEPT_START_LEN]);
+            int32_t base64Len = base64_encode(&self->scratchSpace[256], SHA1HashSize, &self->scratchSpace[server_WEBSOCKET_ACCEPT_START_LEN]);
             memcpy(&self->scratchSpace[server_WEBSOCKET_ACCEPT_START_LEN + base64Len], "\r\n\r\n", 4);
 
             printf("Full Response: %.*s", (int)(server_WEBSOCKET_ACCEPT_START_LEN + base64Len + 4), self->scratchSpace);

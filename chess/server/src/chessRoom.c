@@ -119,6 +119,7 @@ static int chessRoom_open(struct chessRoom *self, struct chessClient *host, int3
     self->numSpectators = 0;
     if (server_createTimer(server, &self->secondTimerHandle) < 0) return -1;
 
+    self->numMoves = 0;
     self->moves = malloc(sizeof(self->moves[0])); // Need to be able to hold last move at least.
     if (self->moves == NULL) goto cleanup_secondTimer;
     return 0;
@@ -141,7 +142,6 @@ static void chessRoom_start(struct chessRoom *self, struct chessClient *guest) {
     self->guest.client = guest;
     self->winner = protocol_NO_WIN;
     self->hostsTurn = true;
-    self->numMoves = 0;
     self->host.timeSpent = 0;
     self->guest.timeSpent = 0;
 
