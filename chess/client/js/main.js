@@ -24,11 +24,9 @@ class Main {
         this.homeView = new HomeView(this.onCreate, this.onJoin, this.onSpectate);
         this.onMove = (from, to) => {
             this.bufferDataView.setUint8(0, ProtocolClientOp.MOVE);
-            this.bufferDataView.setUint8(1, from.x);
-            this.bufferDataView.setUint8(2, from.y);
-            this.bufferDataView.setUint8(3, to.x);
-            this.bufferDataView.setUint8(4, to.y);
-            this.socket.send(this.bufferByteView.subarray(0, 5));
+            this.bufferDataView.setUint8(1, from);
+            this.bufferDataView.setUint8(2, to);
+            this.socket.send(this.bufferByteView.subarray(0, 3));
         };
         this.onBack = () => {
             this.bufferDataView.setUint8(0, ProtocolClientOp.BACK);

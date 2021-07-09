@@ -13,8 +13,9 @@
 
 static const uint8_t client_GET_REQUEST[] = "GET /chess HTTP/1.1\r\nSec-WebSocket-Key: AQIDBAUGBwgJCgsMDQ4PEC==\r\n\r\n";
 
-static inline void client_create(struct client *self) {
+static inline void client_create(struct client *self, struct clientCallbacks *callbacks) {
     self->received = 0;
+    self->callbacks = *callbacks;
 }
 
 // Return is same as recv().
@@ -62,7 +63,45 @@ static int client_sendWebsocket(struct client *self, int32_t length) {
     return 0;
 }
 
+static int client_onChessUpdate(struct client *self, uint8_t *payload, int32_t length) {
+    uint8_t winner = payload[2];
+    if (winner != protocol_NO_WIN) return 0; // Game already over.
+
+    bool hostsTurn = payload[1];
+    if (hostsTurn == self->state.wasHostsTurn) return 0; // No turn change.
+    self->state.wasHostsTurn = hostsTurn;
+
+    if (self->state.isHost != hostsTurn) return 0; // Not our turn.
+
+    int32_t moveFrom;
+    int32_t moveTo;
+    int status = self->callbacks.makeMove(self->callbacks.data, self->state.isHost, &payload[21], payload[3], payload[4], &moveFrom, &moveTo);
+    if (status < 0) {
+        printf("Bot failed to make a move: %d\n", status);
+        return 0;
+    }
+
+    printf(
+        "Bot tries to move from %d to %d. (%d, %d)->(%d, %d)\n",
+        moveFrom,
+        moveTo,
+        moveFrom % 8,
+        moveFrom / 8,
+        moveTo % 8,
+        moveTo / 8
+    );
+    self->sendBuffer[0] = protocol_MOVE;
+    self->sendBuffer[1] = moveFrom;
+    self->sendBuffer[2] = moveTo;
+
+    if (client_sendWebsocket(self, 3) < 0) return -2;
+    return 0;
+}
+
 static int client_run(struct client *self, char *address, int32_t port, int32_t roomId) {
+    self->state.isHost = roomId < 0;
+    self->state.wasHostsTurn = false;
+
     self->socketFd = socket(AF_INET, SOCK_STREAM, 0);
     if (self->socketFd < 0) return -1;
 
@@ -146,7 +185,7 @@ static int client_run(struct client *self, char *address, int32_t port, int32_t 
         switch (payload[0]) {
             case protocol_HOME: {
                 printf("Home view!\n");
-                if (roomId < 0) {
+                if (self->state.isHost) {
                     self->sendBuffer[0] = protocol_CREATE;
                     if (client_sendWebsocket(self, 1) < 0) {
                         status = -10;
@@ -169,7 +208,12 @@ static int client_run(struct client *self, char *address, int32_t port, int32_t 
                 break;
             }
             case protocol_CHESS: {
-                printf("In game!\n");
+                status = client_onChessUpdate(self, payload, length);
+                if (status < 0) {
+                    printf("Chess update failed: %d\n", status);
+                    status = -12;
+                    goto cleanup_socket;
+                }
                 break;
             }
         }

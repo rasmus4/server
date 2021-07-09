@@ -119,7 +119,7 @@ static int chess_handleSpectate(struct chess *self, struct chessClient *chessCli
 }
 
 static int chess_handleMove(struct chess *self, struct chessClient *chessClient, uint8_t *message, int32_t messageLength) {
-    if (messageLength != 5) return -1;
+    if (messageLength != 3) return -1;
     if (!chessClient_inRoom(chessClient)) return 0;
     if (chessClient_isSpectator(chessClient)) return 0;
 
@@ -132,13 +132,11 @@ static int chess_handleMove(struct chess *self, struct chessClient *chessClient,
     bool isHost = chessClient_isHost(chessClient);
     if (isHost != chessRoom_isHostsTurn(chessClient->room)) return 0; // Not players turn.
 
-    int32_t fromX = message[1];
-    int32_t fromY = message[2];
-    int32_t toX = message[3];
-    int32_t toY = message[4];
+    int32_t fromIndex = message[1];
+    int32_t toIndex = message[2];
 
-    if (chessRoom_isMoveValid(room, fromX, fromY, toX, toY, isHost)) {
-        chessRoom_doMove(room, fromX, fromY, toX, toY, isHost);
+    if (chessRoom_isMoveValid(room, fromIndex, toIndex, isHost)) {
+        chessRoom_doMove(room, fromIndex, toIndex, isHost);
 
         struct chessClient *opponent = isHost ? room->guest.client : room->host.client;
         chessClient_followNewMove(opponent);

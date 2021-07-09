@@ -1,4 +1,4 @@
-const protocolVersion = 2;
+const protocolVersion = 3;
 
 const ProtocolClientOp = {
     // Chess

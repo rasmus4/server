@@ -57,7 +57,6 @@ static inline void chessRoom_updateTimeSpent(struct chessRoom *self, int64_t cur
 static inline int64_t chessRoom_timeSpent(struct chessRoom *self, bool hostPov);
 
 // Validates coordinates.
-static bool chessRoom_isMoveValid(struct chessRoom *self, int32_t fromX, int32_t fromY, int32_t toX, int32_t toY, bool hostPov);
+static bool chessRoom_isMoveValid(struct chessRoom *self, int32_t fromIndex, int32_t toIndex, bool hostPov);
 
-static void chessRoom_doMove(struct chessRoom *self, int32_t fromX, int32_t fromY, int32_t toX, int32_t toY, bool hostPov);
-static uint8_t chessRoom_pieceAt(struct chessRoom *self, int32_t x, int32_t y, bool hostPov);
+static void chessRoom_doMove(struct chessRoom *self, int32_t fromIndex, int32_t toIndex, bool hostPov);

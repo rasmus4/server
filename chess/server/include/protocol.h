@@ -1,6 +1,6 @@
 #pragma once
 
-#define protocol_VERSION 2
+#define protocol_VERSION 3
 
 enum protocol_clientOp {
     protocol_MOVE = 0,

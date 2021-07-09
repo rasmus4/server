@@ -35,7 +35,9 @@ class ChessView {
                 if (this.selectedTile === null) {
                     this.selectedTile = tile;
                 } else {
-                    this.onMove(this.selectedTile, tile);
+                    let from = this.getBoardIndex(this.selectedTile.x, this.selectedTile.y);
+                    let to = this.getBoardIndex(tile.x, tile.y);
+                    this.onMove(from, to);
                     this.selectedTile = null;
                 }
                 this.draw();
