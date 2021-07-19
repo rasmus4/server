@@ -2,3 +2,4 @@
 #include "src/client.c"
 #include "src/clientCallbacks.c"
 #include "src/bots/retarded.c"
+#include "src/bots/random.c"
