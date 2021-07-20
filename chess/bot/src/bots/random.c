@@ -3,8 +3,8 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#define random_CONVERT_INDEX(index) (index + 26 + 4 * (index / 8))
-#define random_CONVERT_INDEX_BACK(index) (index - 18 - 4 * (index / 12))
+#define random_CONVERT_INDEX(INDEX) (INDEX + 26 + 4 * (INDEX / 8))
+#define random_CONVERT_INDEX_BACK(INDEX) (INDEX - 18 - 4 * (INDEX / 12))
 
 // Transform board to 12x12 with 2 wide borders, and pretend we are always white.
 static void random_transformBoard(struct random *self, bool isHost, uint8_t *board) {
@@ -115,6 +115,58 @@ static void random_knightMoves(struct random *self, int32_t index) {
     random_TRY_MOVE
 }
 
+static void random_pawnMoves(struct random *self, int32_t index) {
+    uint8_t piece;
+    piece = self->board[index + UP];
+    if (piece == 0) {
+        self->moves[self->numMoves++] = (struct random_move) {
+            .from = index,
+            .to = index + UP
+        };
+    }
+
+    piece = self->board[index + UP + LEFT];
+    if (piece != 0 && (piece & protocol_WHITE_FLAG) == 0) {
+        self->moves[self->numMoves++] = (struct random_move) {
+            .from = index,
+            .to = index + UP + LEFT
+        };
+    }
+
+    piece = self->board[index + UP + RIGHT];
+    if (piece != 0 && (piece & protocol_WHITE_FLAG) == 0) {
+        self->moves[self->numMoves++] = (struct random_move) {
+            .from = index,
+            .to = index + UP + RIGHT
+        };
+    }
+}
+
+#define random_TRY_MOVES(OFFSET) \
+    for (testIndex = index + OFFSET; (self->board[testIndex] & protocol_WHITE_FLAG) == 0; testIndex += OFFSET) { \
+        self->moves[self->numMoves++] = (struct random_move) { \
+            .from = index, \
+            .to = testIndex \
+        }; \
+        if (self->board[testIndex] != 0) break; \
+    }
+
+static void random_rookMoves(struct random *self, int32_t index) {
+    int32_t testIndex;
+    random_TRY_MOVES(UP)
+    random_TRY_MOVES(DOWN)
+    random_TRY_MOVES(RIGHT)
+    random_TRY_MOVES(LEFT)
+}
+
+static void random_bishopMoves(struct random *self, int32_t index) {
+    int32_t testIndex;
+    random_TRY_MOVES(UP + LEFT)
+    random_TRY_MOVES(DOWN + LEFT)
+    random_TRY_MOVES(UP + RIGHT)
+    random_TRY_MOVES(DOWN + RIGHT)
+}
+
 #undef UP
 #undef DOWN
 #undef RIGHT
@@ -136,12 +188,15 @@ static int random_makeMove(void *data, bool isHost, uint8_t *board, int32_t last
                     break;
                 }
                 case protocol_QUEEN: {
-                    break;
+                    random_rookMoves(SELF, index);
+                    // fallthrough
                 }
                 case protocol_BISHOP: {
+                    random_bishopMoves(SELF, index);
                     break;
                 }
                 case protocol_ROOK: {
+                    random_rookMoves(SELF, index);
                     break;
                 }
                 case protocol_KNIGHT: {
@@ -149,6 +204,7 @@ static int random_makeMove(void *data, bool isHost, uint8_t *board, int32_t last
                     break;
                 }
                 case protocol_PAWN: {
+                    random_pawnMoves(SELF, index);
                     break;
                 }
                 default: UNREACHABLE;
