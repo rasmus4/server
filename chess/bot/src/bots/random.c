@@ -63,8 +63,7 @@ static void random_dumpBoard(struct random *self) {
 }
 
 #define random_TRY_MOVE \
-    piece = self->board[testIndex]; \
-    if ((piece & protocol_WHITE_FLAG) == 0) { \
+    if ((self->board[testIndex] & protocol_WHITE_FLAG) == 0) { \
         self->moves[self->numMoves++] = (struct random_move) { \
             .from = index, \
             .to = testIndex \
@@ -77,7 +76,6 @@ static void random_dumpBoard(struct random *self) {
 #define LEFT (-1)
 
 static void random_kingMoves(struct random *self, int32_t index) {
-    uint32_t piece;
     int32_t testIndex;
     testIndex = index + DOWN + LEFT;
     random_TRY_MOVE
@@ -98,7 +96,6 @@ static void random_kingMoves(struct random *self, int32_t index) {
 }
 
 static void random_knightMoves(struct random *self, int32_t index) {
-    uint32_t piece;
     int32_t testIndex;
     testIndex = index + 2 * LEFT + DOWN;
     random_TRY_MOVE
