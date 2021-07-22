@@ -1,6 +1,7 @@
 #include "client.h"
 #include "bots/retarded.h"
 #include "bots/random.h"
+#include "bots/recursive.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,6 +12,7 @@
 static union {
     struct retarded retarded;
     struct random random;
+    struct recursive recursive;
 } main_botData;
 static struct client main_client;
 
@@ -32,6 +34,8 @@ int main(int argc, char **argv) {
         clientCallbacks_create(&callbacks, &main_botData.retarded, retarded_makeMove);
     } else if (strcmp(argv[1], "random") == 0) {
         clientCallbacks_create(&callbacks, &main_botData.random, random_makeMove);
+    } else if (strcmp(argv[1], "recursive") == 0) {
+        clientCallbacks_create(&callbacks, &main_botData.recursive, recursive_makeMove);
     } else {
         printf("Unknown bot: %s\n", argv[1]);
         return 1;

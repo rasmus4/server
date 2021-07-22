@@ -11,23 +11,23 @@ static void random_transformBoard(struct random *self, bool isHost, uint8_t *boa
     // Make borders
     for (int32_t i = 0; i < 12; ++i) {
         // Bottom
-        self->board[i] = protocol_WHITE_FLAG;
-        self->board[12 + i] = protocol_WHITE_FLAG;
+        self->board[i] = protocol_WHITE_FLAG | protocol_BLACK_FLAG;
+        self->board[12 + i] = protocol_WHITE_FLAG  | protocol_BLACK_FLAG;
         // Top
-        self->board[12 * 10 + i] = protocol_WHITE_FLAG;
-        self->board[12 * 11 + i] = protocol_WHITE_FLAG;
+        self->board[12 * 10 + i] = protocol_WHITE_FLAG | protocol_BLACK_FLAG;
+        self->board[12 * 11 + i] = protocol_WHITE_FLAG | protocol_BLACK_FLAG;
         // Left
-        self->board[i * 12] = protocol_WHITE_FLAG;
-        self->board[i * 12 + 1] = protocol_WHITE_FLAG;
+        self->board[i * 12] = protocol_WHITE_FLAG | protocol_BLACK_FLAG;
+        self->board[i * 12 + 1] = protocol_WHITE_FLAG | protocol_BLACK_FLAG;
         // Right
-        self->board[i * 12 + 10] = protocol_WHITE_FLAG;
-        self->board[i * 12 + 11] = protocol_WHITE_FLAG;
+        self->board[i * 12 + 10] = protocol_WHITE_FLAG | protocol_BLACK_FLAG;
+        self->board[i * 12 + 11] = protocol_WHITE_FLAG | protocol_BLACK_FLAG;
     }
 
     for (int32_t i = 0; i < 64; ++i) {
         uint8_t piece = board[i];
         if (!isHost && piece != protocol_NO_PIECE) {
-            piece ^= protocol_WHITE_FLAG;
+            piece ^= (protocol_WHITE_FLAG | protocol_BLACK_FLAG);
         }
         self->board[random_CONVERT_INDEX(i)] = piece;
     }

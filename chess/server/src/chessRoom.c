@@ -11,21 +11,21 @@
 #include <assert.h>
 
 static void chessRoom_initBoard(struct chessRoom *self) {
-    self->board[0] = self->board[7] = protocol_ROOK  | protocol_WHITE_FLAG;
-    self->board[1] = self->board[6] = protocol_KNIGHT  | protocol_WHITE_FLAG;
-    self->board[2] = self->board[5] = protocol_BISHOP  | protocol_WHITE_FLAG;
-    self->board[3] = protocol_QUEEN  | protocol_WHITE_FLAG;
-    self->board[4] = protocol_KING  | protocol_WHITE_FLAG;
-    for (int i = 0; i < 8; ++i) self->board[8 + i] = protocol_PAWN  | protocol_WHITE_FLAG;
+    self->board[0] = self->board[7] = protocol_ROOK | protocol_WHITE_FLAG;
+    self->board[1] = self->board[6] = protocol_KNIGHT | protocol_WHITE_FLAG;
+    self->board[2] = self->board[5] = protocol_BISHOP | protocol_WHITE_FLAG;
+    self->board[3] = protocol_QUEEN | protocol_WHITE_FLAG;
+    self->board[4] = protocol_KING | protocol_WHITE_FLAG;
+    for (int i = 0; i < 8; ++i) self->board[8 + i] = protocol_PAWN | protocol_WHITE_FLAG;
 
     for (int i = 16; i < 48; ++i) self->board[i] = protocol_NO_PIECE;
 
-    self->board[56] = self->board[63] = protocol_ROOK;
-    self->board[57] = self->board[62] = protocol_KNIGHT;
-    self->board[58] = self->board[61] = protocol_BISHOP;
-    self->board[59] = protocol_QUEEN;
-    self->board[60] = protocol_KING;
-    for (int i = 0; i < 8; ++i) self->board[48 + i] = protocol_PAWN;
+    self->board[56] = self->board[63] = protocol_ROOK | protocol_BLACK_FLAG;
+    self->board[57] = self->board[62] = protocol_KNIGHT | protocol_BLACK_FLAG;
+    self->board[58] = self->board[61] = protocol_BISHOP | protocol_BLACK_FLAG;
+    self->board[59] = protocol_QUEEN | protocol_BLACK_FLAG;
+    self->board[60] = protocol_KING | protocol_BLACK_FLAG;
+    for (int i = 0; i < 8; ++i) self->board[48 + i] = protocol_PAWN | protocol_BLACK_FLAG;
 }
 
 static inline int32_t chessRoom_convertIndex(int32_t index, bool hostPov) {
