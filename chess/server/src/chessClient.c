@@ -1,7 +1,7 @@
-#include "include/chessClient.h"
-#include "include/chess.h"
-#include "include/protocol.h"
-#include "include/chessRoom.h"
+#include "chessClient.h"
+#include "chess.h"
+#include "protocol.h"
+#include "chessRoom.h"
 
 #include <stdbool.h>
 #include <string.h>

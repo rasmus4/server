@@ -1,7 +1,7 @@
 #pragma once
-#include "include/fileResponse.h"
-#include "include/serverCallbacks.h"
-#include "include/serverClient.h"
+#include "fileResponse.h"
+#include "serverCallbacks.h"
+#include "serverClient.h"
 
 #include <sys/timerfd.h>
 #include <unistd.h>

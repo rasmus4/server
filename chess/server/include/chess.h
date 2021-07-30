@@ -1,8 +1,8 @@
 #pragma once
-#include "include/chessClient.h"
-#include "include/chessRoom.h"
-#include "include/server.h"
-#include "include/fileResponse.h"
+#include "chessClient.h"
+#include "chessRoom.h"
+#include "server.h"
+#include "fileResponse.h"
 
 #include <stdint.h>
 

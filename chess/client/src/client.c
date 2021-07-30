@@ -1,5 +1,5 @@
 #include "client.h"
-#include "../../server/include/protocol.h"
+#include "protocol.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -13,9 +13,9 @@
 
 static const uint8_t client_GET_REQUEST[] = "GET /chess HTTP/1.1\r\nSec-WebSocket-Key: AQIDBAUGBwgJCgsMDQ4PEC==\r\n\r\n";
 
-static inline void client_create(struct client *self, struct clientCallbacks *callbacks) {
+static inline void client_create(struct client *self, client_makeMove makeMove) {
     self->received = 0;
-    self->callbacks = *callbacks;
+    self->makeMove = makeMove;
 }
 
 // Return is same as recv().
@@ -75,7 +75,7 @@ static int client_onChessUpdate(struct client *self, uint8_t *payload, int32_t l
 
     int32_t moveFrom;
     int32_t moveTo;
-    int status = self->callbacks.makeMove(self->callbacks.data, self->state.isHost, &payload[21], payload[3], payload[4], &moveFrom, &moveTo);
+    int status = self->makeMove(self->state.isHost, &payload[21], payload[3], payload[4], &moveFrom, &moveTo);
     if (status < 0) {
         printf("Bot failed to make a move: %d\n", status);
         return 0;

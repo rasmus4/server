@@ -1,7 +1,7 @@
-#include "include/chess.h"
-#include "include/protocol.h"
-#include "include/fileResponse.h"
-#include "include/timespec.h"
+#include "chess.h"
+#include "protocol.h"
+#include "fileResponse.h"
+#include "timespec.h"
 #include "generatedHtml.h"
 
 #include <stdlib.h>
