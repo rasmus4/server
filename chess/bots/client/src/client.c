@@ -100,7 +100,6 @@ static int client_onChessUpdate(struct client *self, uint8_t *payload, int32_t l
 
 static int client_run(struct client *self, char *address, int32_t port, int32_t roomId) {
     self->state.isHost = roomId < 0;
-    self->state.wasHostsTurn = false;
 
     self->socketFd = socket(AF_INET, SOCK_STREAM, 0);
     if (self->socketFd < 0) return -1;
@@ -185,6 +184,7 @@ static int client_run(struct client *self, char *address, int32_t port, int32_t 
         switch (payload[0]) {
             case protocol_HOME: {
                 printf("Home view!\n");
+                self->state.wasHostsTurn = false;
                 if (self->state.isHost) {
                     self->sendBuffer[0] = protocol_CREATE;
                     if (client_sendWebsocket(self, 1) < 0) {
