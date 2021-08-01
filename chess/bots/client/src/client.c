@@ -20,7 +20,7 @@ static inline void client_create(struct client *self, client_makeMove makeMove) 
 
 // Return is same as recv().
 static int client_receive(struct client *self) {
-    int status = recv(self->socketFd, &self->receiveBuffer[0], client_RECEIVE_BUFFER_SIZE - self->received, 0);
+    int status = recv(self->socketFd, &self->receiveBuffer[self->received], client_RECEIVE_BUFFER_SIZE - self->received, 0);
     if (status > 0) self->received += status;
     return status;
 }
@@ -216,6 +216,7 @@ static int client_run(struct client *self, char *address, int32_t port, int32_t 
                 }
                 break;
             }
+            default: UNREACHABLE;
         }
         client_ackWebsocket(self);
     }
