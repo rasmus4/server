@@ -13,6 +13,8 @@
 struct server {
     int listenSocketFd;
     int epollFd;
+    int sha1SocketFd;
+    int sha1InstanceFd;
     struct serverClient clients[server_MAX_CLIENTS];
     struct fileResponse *fileResponses;
     int32_t fileResponsesLength;

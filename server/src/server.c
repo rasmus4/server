@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <sys/epoll.h>
 #include <fcntl.h>
+#include <linux/if_alg.h>
 
 #define server_WEBSOCKET_ACCEPT_START \
     "HTTP/1.1 101 Switching Protocols\r\n" \
@@ -31,42 +32,93 @@ static int server_init(
     self->fileResponsesLength = fileResponsesLength;
     self->callbacks = *callbacks;
 
+    for (int32_t i = 0; i < server_MAX_CLIENTS; ++i) {
+        serverClient_init(&self->clients[i], i);
+    }
+
     self->listenSocketFd = socket(AF_INET, SOCK_STREAM, 0);
     if (self->listenSocketFd < 0) return -1;
 
+    int status;
     int enable = 1;
-    if (setsockopt(self->listenSocketFd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable)) < 0) return -2;
-    if (setsockopt(self->listenSocketFd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable)) < 0) return -3;
+    if (setsockopt(self->listenSocketFd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable)) < 0) {
+        status = -2;
+        goto cleanup_listenSocketFd;
+    }
+    if (setsockopt(self->listenSocketFd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable)) < 0) {
+        status = -3;
+        goto cleanup_listenSocketFd;
+    }
 
     struct sockaddr_in listenAddr;
     listenAddr.sin_family = AF_INET;
     listenAddr.sin_addr.s_addr = INADDR_ANY;
     listenAddr.sin_port = htons(8089);
 
-    if (bind(self->listenSocketFd, (struct sockaddr *)&listenAddr, sizeof(listenAddr)) < 0) return -4;
+    if (bind(self->listenSocketFd, (struct sockaddr *)&listenAddr, sizeof(listenAddr)) < 0) {
+        status = -4;
+        goto cleanup_listenSocketFd;
+    }
 
-    if (listen(self->listenSocketFd, 128) < 0) return -5;
+    if (listen(self->listenSocketFd, 128) < 0) {
+        status = -5;
+        goto cleanup_listenSocketFd;
+    }
 
     self->epollFd = epoll_create1(0);
-    if (self->epollFd < 0) return -6;
+    if (self->epollFd < 0) {
+        status = -6;
+        goto cleanup_listenSocketFd;
+    }
 
     struct epoll_event listenSocketEvent = {
         .events = EPOLLIN,
         .data.ptr = &self->listenSocketFd
     };
-    if (epoll_ctl(self->epollFd, EPOLL_CTL_ADD, self->listenSocketFd, &listenSocketEvent) < 0) return -7;
+    if (epoll_ctl(self->epollFd, EPOLL_CTL_ADD, self->listenSocketFd, &listenSocketEvent) < 0) {
+        status = -7;
+        goto cleanup_epollFd;
+    }
 
-    for (int32_t i = 0; i < server_MAX_CLIENTS; ++i) {
-        serverClient_init(&self->clients[i], i);
+    self->sha1SocketFd = socket(AF_ALG, SOCK_SEQPACKET, 0);
+    if (self->sha1SocketFd < 0) {
+        status = -8;
+        goto cleanup_epollFd;
+    }
+    struct sockaddr_alg sha1Addr = {
+        .salg_family = AF_ALG,
+        .salg_type = "hash",
+        .salg_name = "sha1"
+    };
+    if (bind(self->sha1SocketFd, (struct sockaddr *)&sha1Addr, sizeof(sha1Addr)) < 0) {
+        status = -9;
+        goto cleanup_sha1SocketFd;
+    }
+    self->sha1InstanceFd = accept(self->sha1SocketFd, NULL, NULL);
+    if (self->sha1InstanceFd < 0) {
+        status = -10;
+        goto cleanup_sha1SocketFd;
     }
 
     return 0;
+
+    cleanup_sha1SocketFd:
+    close(self->sha1SocketFd);
+    cleanup_epollFd:
+    close(self->epollFd);
+    cleanup_listenSocketFd:
+    close(self->listenSocketFd);
+    return status;
 }
 
 static inline void server_deinit(struct server *self) {
     for (int32_t i = 0; i < server_MAX_CLIENTS; ++i) {
         serverClient_deinit(&self->clients[i]);
     }
+    close(self->sha1InstanceFd);
+    close(self->sha1SocketFd);
+    close(self->epollFd);
+    close(self->listenSocketFd);
 }
 
 static int server_acceptSocket(struct server *self) {
@@ -254,24 +306,22 @@ static int server_handleHttpRequest(struct server *self, struct serverClient *cl
 
         if (websocketKeyStart != 0) {
             // Respond to websocket upgrade request.
-            memcpy(self->scratchSpace, &client->receiveBuffer[websocketKeyStart], 24);
+            memcpy(&self->scratchSpace[0], &client->receiveBuffer[websocketKeyStart], 24);
             memcpy(&self->scratchSpace[24], "258EAFA5-E914-47DA-95CA-C5AB0DC85B11", 36);
 
-            SHA1Context sha1Context;
-            SHA1Reset(&sha1Context);
-            SHA1Input(&sha1Context, self->scratchSpace, 24 + 36);
-            SHA1Result(&sha1Context, &self->scratchSpace[256]);
+            if (write(self->sha1InstanceFd, &self->scratchSpace[0], 60) != 60) return -1;
+            if (read(self->sha1InstanceFd, &self->scratchSpace[256], 20) != 20) return -2;
 
             memcpy(&self->scratchSpace[0], server_WEBSOCKET_ACCEPT_START, server_WEBSOCKET_ACCEPT_START_LEN);
-            int32_t base64Len = base64_encode(&self->scratchSpace[256], SHA1HashSize, &self->scratchSpace[server_WEBSOCKET_ACCEPT_START_LEN]);
+            int32_t base64Len = base64_encode(&self->scratchSpace[256], 20, &self->scratchSpace[server_WEBSOCKET_ACCEPT_START_LEN]);
             memcpy(&self->scratchSpace[server_WEBSOCKET_ACCEPT_START_LEN + base64Len], "\r\n\r\n", 4);
 
             printf("Full Response: %.*s", (int)(server_WEBSOCKET_ACCEPT_START_LEN + base64Len + 4), self->scratchSpace);
             client->receiveLength = 0;
 
             int32_t len = server_WEBSOCKET_ACCEPT_START_LEN + base64Len + 4;
-            if (send(client->fd, self->scratchSpace, len, MSG_NOSIGNAL) != len) return -1;
-            if (self->callbacks.onConnect(self->callbacks.data, client) != 0) return -2;
+            if (send(client->fd, self->scratchSpace, len, MSG_NOSIGNAL) != len) return -3;
+            if (self->callbacks.onConnect(self->callbacks.data, client) != 0) return -4;
             // Only set this if the callback accepts the new connection.
             client->isWebsocket = true;
             return 1;
