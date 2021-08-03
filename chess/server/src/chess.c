@@ -89,6 +89,14 @@ static int chess_handleJoin(struct chess *self, struct chessClient *chessClient,
     if (chess_sendClientState(self, room->host.client) < 0) {
         server_closeClient(&self->server, room->host.client->serverClient);
     }
+
+    for (int32_t i = 0; i < room->numSpectators; ++i) {
+        struct chessClient *spectator = &self->clients[room->spectators[i]];
+        if (chess_sendClientState(self, spectator) < 0) {
+            server_closeClient(&self->server, spectator->serverClient);
+        }
+    }
+
     if (chess_sendClientState(self, chessClient) < 0) return -2;
     return 0;
 }
@@ -109,7 +117,6 @@ static int chess_handleSpectate(struct chess *self, struct chessClient *chessCli
     }
     return 0; // Doesn't exist.
     found:
-    if (!chessRoom_isFull(room)) return 0; // Can only spectate full games.
 
     if (chessRoom_addSpectator(room, chessClient->serverClient->index) < 0) return 0;
     chessClient_setRoom(chessClient, room);

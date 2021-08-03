@@ -37,9 +37,11 @@ static inline bool chessClient_isGuest(struct chessClient *self) {
 
 static inline bool chessClient_isSpectator(struct chessClient *self) {
     assert(self->room);
-    // If we are not host we must either be guest or spectator in the room.
-    // In both cases there exists a guest (can only spectate full games).
-    return !chessClient_isHost(self) && !chessClient_isGuest(self);
+
+    if (chessClient_isHost(self)) return false;
+    if (chessRoom_isFull(self->room)) return !chessClient_isGuest(self);
+    // Not host and room not full, must be spectator.
+    return true;
 }
 
 static inline void chessClient_followNewMove(struct chessClient *self) {
