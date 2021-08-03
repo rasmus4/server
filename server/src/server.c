@@ -1,6 +1,5 @@
 #include "server.h"
 #include "base64.h"
-#include "sha1.h"
 #include "serverClient.h"
 
 #include <stdio.h>

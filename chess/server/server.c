@@ -7,4 +7,3 @@
 #include "../../server/src/serverClient.c"
 #include "../../server/src/fileResponse.c"
 #include "../../server/src/base64.c"
-#include "../../server/src/sha1.c"
