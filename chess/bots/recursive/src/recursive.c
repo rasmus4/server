@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <limits.h>
 
+static int32_t recursive_evaluateWhiteMove(int32_t from, int32_t to, int32_t remainingDepth);
+
 #define recursive_DEPTH 5
 
 static int32_t recursive_pieceValues[7] = {
@@ -16,11 +18,6 @@ static int32_t recursive_pieceValues[7] = {
     5, // Rook
     9, // Queen
 };
-
-#define UP 12
-#define DOWN (-12)
-#define RIGHT 1
-#define LEFT (-1)
 
 #define recursive_TRY_WHITE_MOVE \
     if ((common_board[testIndex] & protocol_WHITE_FLAG) == 0) { \
@@ -48,7 +45,10 @@ static int32_t recursive_pieceValues[7] = {
         if (common_board[testIndex] != 0) break; \
     }
 
-static int32_t recursive_evaluateWhiteMove(int32_t from, int32_t to, int32_t remainingDepth);
+#define UP 12
+#define DOWN (-12)
+#define RIGHT 1
+#define LEFT (-1)
 
 static int32_t recursive_evaluateBlackMove(int32_t from, int32_t to, int32_t remainingDepth) {
     uint8_t takenPiece = common_board[to];

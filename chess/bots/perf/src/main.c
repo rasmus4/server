@@ -5,7 +5,6 @@
 #include <time.h>
 #include <stdio.h>
 #include <inttypes.h>
-#include <sched.h>
 
 #define BOARD(X, Y) main_board[63 - ((Y - 1) * 8 + (X - 1))]
 #define WHITE(PIECE) (PIECE | protocol_WHITE_FLAG)
@@ -28,13 +27,6 @@
 static uint8_t main_board[64];
 
 int main(int argc, char **argv) {
-    struct sched_param schedparm = {
-        .sched_priority = 99
-    };
-    if (sched_setscheduler(0, SCHED_FIFO, &schedparm) < 0) {
-        printf("Note: Could not set scheduler priority (run as root)\n");
-    }
-
     BOARD(1, 1) = WHITE(protocol_ROOK);
     BOARD(2, 1) = WHITE(protocol_KNIGHT);
     BOARD(3, 1) = WHITE(protocol_BISHOP);
