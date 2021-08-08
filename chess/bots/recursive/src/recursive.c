@@ -10,7 +10,7 @@ static int32_t recursive_evaluateWhiteMove(int32_t from, int32_t to, int32_t rem
 
 #define recursive_DEPTH 5
 
-static int32_t recursive_pieceValues[7] = {
+static const int32_t recursive_pieceValues[7] = {
     0, // No piece
     1, // Pawn
     3, // Bishop
@@ -56,10 +56,10 @@ static int32_t recursive_evaluateBlackMove(int32_t from, int32_t to, int32_t rem
     int32_t pieceValue = recursive_pieceValues[takenPiece & protocol_PIECE_MASK];
     uint8_t originalPiece = common_board[from];
     if (originalPiece == (protocol_PAWN | protocol_BLACK_FLAG) && to < common_CONVERT_INDEX(8)) {
-        common_board[from] = protocol_QUEEN | protocol_BLACK_FLAG;
         pieceValue += 8;
-    }
     if (remainingDepth == 0) return -pieceValue;
+        common_board[from] = protocol_QUEEN | protocol_BLACK_FLAG;
+    } else if (remainingDepth == 0) return -pieceValue;
 
     // Find best response for white.
     common_board[to] = common_board[from];
@@ -159,10 +159,10 @@ static int32_t recursive_evaluateWhiteMove(int32_t from, int32_t to, int32_t rem
     int32_t pieceValue = recursive_pieceValues[takenPiece & protocol_PIECE_MASK];
     uint8_t originalPiece = common_board[from];
     if (originalPiece == (protocol_PAWN | protocol_WHITE_FLAG) && to >= common_CONVERT_INDEX(56)) {
-        common_board[from] = protocol_QUEEN | protocol_WHITE_FLAG;
         pieceValue += 8;
-    }
     if (remainingDepth == 0) return pieceValue;
+        common_board[from] = protocol_QUEEN | protocol_WHITE_FLAG;
+    } else if (remainingDepth == 0) return pieceValue;
 
     // Find best response for black.
     common_board[to] = common_board[from];
@@ -170,7 +170,7 @@ static int32_t recursive_evaluateWhiteMove(int32_t from, int32_t to, int32_t rem
     int32_t best = INT32_MAX;
     for (int32_t i = 0; i < 64; ++i) {
         int32_t index = common_CONVERT_INDEX(i);
-        uint8_t piece = common_board[index];
+        int32_t piece = common_board[index];
         if ((piece & protocol_BLACK_FLAG) == 0) continue;
 
         int32_t testIndex;
