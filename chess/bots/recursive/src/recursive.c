@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <string.h>
 
 static int32_t recursive_evaluateWhiteMove(int32_t from, int32_t to, int32_t remainingDepth);
 
@@ -19,28 +20,52 @@ static const int32_t recursive_pieceValues[7] = {
     9, // Queen
 };
 
+static int32_t whitePieces[16];
+static int32_t whiteNumPieces;
+static int32_t blackPieces[16];
+static int32_t blackNumPieces;
+
+static int32_t pieceIndices[144];
+
+static void recursive_initPieces(void) {
+    memset(&pieceIndices, 0, sizeof(pieceIndices));
+    whiteNumPieces = 0;
+    blackNumPieces = 0;
+    for (int32_t i = 0; i < 64; ++i) {
+        int32_t index = common_CONVERT_INDEX(i);
+        uint8_t piece = common_board[index];
+        if ((piece & protocol_WHITE_FLAG) != 0) {
+            pieceIndices[index] = whiteNumPieces;
+            whitePieces[whiteNumPieces++] = index;
+        } else if ((piece & protocol_BLACK_FLAG) != 0) {
+            pieceIndices[index] = blackNumPieces;
+            blackPieces[blackNumPieces++] = index;
+        }
+    }
+}
+
 #define recursive_TRY_WHITE_MOVE \
     if ((common_board[testIndex] & protocol_WHITE_FLAG) == 0) { \
-        int32_t SCORE = recursive_evaluateWhiteMove(index, testIndex, remainingDepth - 1); \
+        int32_t SCORE = recursive_evaluateWhiteMove(i, testIndex, remainingDepth - 1); \
         if (SCORE > best) best = SCORE; \
     }
 
 #define recursive_TRY_WHITE_MOVES(OFFSET) \
     for (testIndex = index + OFFSET; (common_board[testIndex] & protocol_WHITE_FLAG) == 0; testIndex += OFFSET) { \
-        int32_t SCORE = recursive_evaluateWhiteMove(index, testIndex, remainingDepth - 1); \
+        int32_t SCORE = recursive_evaluateWhiteMove(i, testIndex, remainingDepth - 1); \
         if (SCORE > best) best = SCORE; \
         if (common_board[testIndex] != 0) break; \
     }
 
 #define recursive_TRY_BLACK_MOVE \
     if ((common_board[testIndex] & protocol_BLACK_FLAG) == 0) { \
-        int32_t SCORE = recursive_evaluateBlackMove(index, testIndex, remainingDepth - 1); \
+        int32_t SCORE = recursive_evaluateBlackMove(i, testIndex, remainingDepth - 1); \
         if (SCORE < best) best = SCORE; \
     }
 
 #define recursive_TRY_BLACK_MOVES(OFFSET) \
     for (testIndex = index + OFFSET; (common_board[testIndex] & protocol_BLACK_FLAG) == 0; testIndex += OFFSET) { \
-        int32_t SCORE = recursive_evaluateBlackMove(index, testIndex, remainingDepth - 1); \
+        int32_t SCORE = recursive_evaluateBlackMove(i, testIndex, remainingDepth - 1); \
         if (SCORE < best) best = SCORE; \
         if (common_board[testIndex] != 0) break; \
     }
@@ -50,9 +75,12 @@ static const int32_t recursive_pieceValues[7] = {
 #define RIGHT 1
 #define LEFT (-1)
 
-static int32_t recursive_evaluateBlackMove(int32_t from, int32_t to, int32_t remainingDepth) {
+static int32_t recursive_evaluateBlackMove(int32_t blackPiece, int32_t to, int32_t remainingDepth) {
+    int32_t from = blackPieces[blackPiece];
+
     uint8_t takenPiece = common_board[to];
     if (takenPiece == (protocol_KING | protocol_WHITE_FLAG)) return -10000;
+
     int32_t pieceValue = recursive_pieceValues[takenPiece & protocol_PIECE_MASK];
     uint8_t originalPiece = common_board[from];
     if (originalPiece == (protocol_PAWN | protocol_BLACK_FLAG) && to < common_CONVERT_INDEX(8)) {
@@ -61,12 +89,19 @@ static int32_t recursive_evaluateBlackMove(int32_t from, int32_t to, int32_t rem
         common_board[from] = protocol_QUEEN | protocol_BLACK_FLAG;
     } else if (remainingDepth == 0) return -pieceValue;
 
+    int32_t pieceIndex = pieceIndices[to];
+    if (takenPiece != 0) {
+        whitePieces[pieceIndex] = whitePieces[--whiteNumPieces];
+    }
+
     // Find best response for white.
     common_board[to] = common_board[from];
     common_board[from] = 0;
+    pieceIndices[to] = blackPiece;
+    blackPieces[blackPiece] = to;
     int32_t best = INT32_MIN;
-    for (int32_t i = 0; i < 64; ++i) {
-        int32_t index = common_CONVERT_INDEX(i);
+    for (int32_t i = 0; i < whiteNumPieces; ++i) {
+        int32_t index = whitePieces[i];
         uint8_t piece = common_board[index];
         if ((piece & protocol_WHITE_FLAG) == 0) continue;
 
@@ -128,19 +163,19 @@ static int32_t recursive_evaluateBlackMove(int32_t from, int32_t to, int32_t rem
             case protocol_PAWN: {
                 testIndex = index + UP;
                 if (common_board[testIndex] == 0) {
-                    int32_t moveScore = recursive_evaluateWhiteMove(index, testIndex, remainingDepth - 1);
+                    int32_t moveScore = recursive_evaluateWhiteMove(i, testIndex, remainingDepth - 1);
                     if (moveScore > best) best = moveScore;
                 }
 
                 testIndex = index + UP + LEFT;
                 if (common_board[testIndex] != 0 && (common_board[testIndex] & protocol_WHITE_FLAG) == 0) {
-                    int32_t moveScore = recursive_evaluateWhiteMove(index, testIndex, remainingDepth - 1);
+                    int32_t moveScore = recursive_evaluateWhiteMove(i, testIndex, remainingDepth - 1);
                     if (moveScore > best) best = moveScore;
                 }
 
                 testIndex = index + UP + RIGHT;
                 if (common_board[testIndex] != 0 && (common_board[testIndex] & protocol_WHITE_FLAG) == 0) {
-                    int32_t moveScore = recursive_evaluateWhiteMove(index, testIndex, remainingDepth - 1);
+                    int32_t moveScore = recursive_evaluateWhiteMove(i, testIndex, remainingDepth - 1);
                     if (moveScore > best) best = moveScore;
                 }
                 break;
@@ -148,14 +183,23 @@ static int32_t recursive_evaluateBlackMove(int32_t from, int32_t to, int32_t rem
             default: UNREACHABLE;
         }
     }
-    common_board[from] = originalPiece;
+    if (takenPiece != 0) {
+        whitePieces[whiteNumPieces++] = whitePieces[pieceIndex];
+        whitePieces[pieceIndex] = to;
+    }
     common_board[to] = takenPiece;
+    pieceIndices[to] = pieceIndex;
+    common_board[from] = originalPiece;
+    blackPieces[blackPiece] = from;
     return best - pieceValue;
 }
 
-static int32_t recursive_evaluateWhiteMove(int32_t from, int32_t to, int32_t remainingDepth) {
+static int32_t recursive_evaluateWhiteMove(int32_t whitePiece, int32_t to, int32_t remainingDepth) {
+    int32_t from = whitePieces[whitePiece];
+
     uint8_t takenPiece = common_board[to];
     if (takenPiece == (protocol_KING | protocol_BLACK_FLAG)) return 10000;
+
     int32_t pieceValue = recursive_pieceValues[takenPiece & protocol_PIECE_MASK];
     uint8_t originalPiece = common_board[from];
     if (originalPiece == (protocol_PAWN | protocol_WHITE_FLAG) && to >= common_CONVERT_INDEX(56)) {
@@ -164,12 +208,19 @@ static int32_t recursive_evaluateWhiteMove(int32_t from, int32_t to, int32_t rem
         common_board[from] = protocol_QUEEN | protocol_WHITE_FLAG;
     } else if (remainingDepth == 0) return pieceValue;
 
+    int32_t pieceIndex = pieceIndices[to];
+    if (takenPiece != 0) {
+        blackPieces[pieceIndex] = blackPieces[--blackNumPieces];
+    }
+
     // Find best response for black.
     common_board[to] = common_board[from];
     common_board[from] = 0;
+    pieceIndices[to] = whitePiece;
+    whitePieces[whitePiece] = to;
     int32_t best = INT32_MAX;
-    for (int32_t i = 0; i < 64; ++i) {
-        int32_t index = common_CONVERT_INDEX(i);
+    for (int32_t i = 0; i < blackNumPieces; ++i) {
+        int32_t index = blackPieces[i];
         int32_t piece = common_board[index];
         if ((piece & protocol_BLACK_FLAG) == 0) continue;
 
@@ -231,19 +282,19 @@ static int32_t recursive_evaluateWhiteMove(int32_t from, int32_t to, int32_t rem
             case protocol_PAWN: {
                 testIndex = index + DOWN;
                 if (common_board[testIndex] == 0) {
-                    int32_t moveScore = recursive_evaluateBlackMove(index, testIndex, remainingDepth - 1);
+                    int32_t moveScore = recursive_evaluateBlackMove(i, testIndex, remainingDepth - 1);
                     if (moveScore < best) best = moveScore;
                 }
 
                 testIndex = index + DOWN + LEFT;
                 if (common_board[testIndex] != 0 && (common_board[testIndex] & protocol_BLACK_FLAG) == 0) {
-                    int32_t moveScore = recursive_evaluateBlackMove(index, testIndex, remainingDepth - 1);
+                    int32_t moveScore = recursive_evaluateBlackMove(i, testIndex, remainingDepth - 1);
                     if (moveScore < best) best = moveScore;
                 }
 
                 testIndex = index + DOWN + RIGHT;
                 if (common_board[testIndex] != 0 && (common_board[testIndex] & protocol_BLACK_FLAG) == 0) {
-                    int32_t moveScore = recursive_evaluateBlackMove(index, testIndex, remainingDepth - 1);
+                    int32_t moveScore = recursive_evaluateBlackMove(i, testIndex, remainingDepth - 1);
                     if (moveScore < best) best = moveScore;
                 }
                 break;
@@ -251,8 +302,14 @@ static int32_t recursive_evaluateWhiteMove(int32_t from, int32_t to, int32_t rem
             default: UNREACHABLE;
         }
     }
-    common_board[from] = originalPiece;
+    if (takenPiece != 0) {
+        blackPieces[blackNumPieces++] = blackPieces[pieceIndex];
+        blackPieces[pieceIndex] = to;
+    }
     common_board[to] = takenPiece;
+    pieceIndices[to] = pieceIndex;
+    common_board[from] = originalPiece;
+    whitePieces[whitePiece] = from;
     return best + pieceValue;
 }
 
@@ -263,6 +320,7 @@ static int32_t recursive_evaluateWhiteMove(int32_t from, int32_t to, int32_t rem
 
 static int recursive_makeMove(bool isHost, uint8_t *board, int32_t lastMoveFrom, int32_t lastMoveTo, int32_t *moveFrom, int32_t *moveTo) {
     common_transformBoard(isHost, board);
+    recursive_initPieces();
     common_dumpBoard();
     common_findMoves();
 
@@ -274,7 +332,7 @@ static int recursive_makeMove(bool isHost, uint8_t *board, int32_t lastMoveFrom,
     int32_t bestScore = INT32_MIN;
     int32_t numBestMoves = 0;
     for (int32_t i = 0; i < common_numMoves; ++i) {
-        scores[i] = recursive_evaluateWhiteMove(common_moves[i].from, common_moves[i].to, recursive_DEPTH);
+        scores[i] = recursive_evaluateWhiteMove(pieceIndices[common_moves[i].from], common_moves[i].to, recursive_DEPTH);
         if (scores[i] > bestScore) {
             bestScore = scores[i];
         }
