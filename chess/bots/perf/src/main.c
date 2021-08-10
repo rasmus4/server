@@ -5,6 +5,8 @@
 #include <time.h>
 #include <stdio.h>
 #include <inttypes.h>
+#include <string.h>
+#include <assert.h>
 
 #define BOARD(X, Y) main_board[63 - ((Y - 1) * 8 + (X - 1))]
 #define WHITE(PIECE) (PIECE | protocol_WHITE_FLAG)
@@ -13,7 +15,7 @@
 #define TIME(FUNCTION) \
     { \
         clock_gettime(CLOCK_MONOTONIC, &startTime); \
-        int STATUS = FUNCTION(false, &main_board[0], 18, 26, &moveFrom, &moveTo); \
+        int STATUS = FUNCTION(true, &main_board[0], 18, 26, &moveFrom, &moveTo); \
         if (STATUS < 0) { \
             printf("%s failed to make move\n", #FUNCTION); \
             return -1; \
@@ -26,46 +28,53 @@
 
 static uint8_t main_board[64];
 
+static int main_parseBoard(char *board) {
+    int32_t y = 7;
+    int32_t x = 0;
+    while (*board != '\0' && y >= 0) {
+        int32_t i = y * 8 + x;
+        if (i < 0) return -1;
+        switch (*board) {
+            case 'p': main_board[i] = protocol_PAWN | protocol_BLACK_FLAG; break;
+            case 'r': main_board[i] = protocol_ROOK | protocol_BLACK_FLAG; break;
+            case 'n': main_board[i] = protocol_KNIGHT | protocol_BLACK_FLAG; break;
+            case 'b': main_board[i] = protocol_BISHOP | protocol_BLACK_FLAG; break;
+            case 'q': main_board[i] = protocol_QUEEN | protocol_BLACK_FLAG; break;
+            case 'k': main_board[i] = protocol_KING | protocol_BLACK_FLAG; break;
+
+            case 'P': main_board[i] = protocol_PAWN | protocol_WHITE_FLAG; break;
+            case 'R': main_board[i] = protocol_ROOK | protocol_WHITE_FLAG; break;
+            case 'N': main_board[i] = protocol_KNIGHT | protocol_WHITE_FLAG; break;
+            case 'B': main_board[i] = protocol_BISHOP | protocol_WHITE_FLAG; break;
+            case 'Q': main_board[i] = protocol_QUEEN | protocol_WHITE_FLAG; break;
+            case 'K': main_board[i] = protocol_KING | protocol_WHITE_FLAG; break;
+            case ' ': break;
+            default: --x;
+        }
+        ++x;
+        if (x > 7) {
+            x = 0;
+            --y;
+        }
+        ++board;
+    }
+    return 0;
+}
+
 int main(int argc, char **argv) {
-    BOARD(1, 1) = WHITE(protocol_ROOK);
-    BOARD(2, 1) = WHITE(protocol_KNIGHT);
-    BOARD(3, 1) = WHITE(protocol_BISHOP);
-    BOARD(4, 1) = WHITE(protocol_QUEEN);
-    BOARD(6, 1) = WHITE(protocol_KING);
-    BOARD(8, 1) = WHITE(protocol_ROOK);
-
-    BOARD(1, 2) = WHITE(protocol_PAWN);
-    BOARD(2, 2) = WHITE(protocol_PAWN);
-    BOARD(6, 2) = WHITE(protocol_PAWN);
-    BOARD(7, 2) = WHITE(protocol_BISHOP);
-    BOARD(8, 2) = WHITE(protocol_PAWN);
-
-    BOARD(4, 3) = WHITE(protocol_PAWN);
-    BOARD(7, 3) = WHITE(protocol_PAWN);
-
-    BOARD(3, 4) = WHITE(protocol_PAWN);
-    BOARD(4, 4) = WHITE(protocol_KNIGHT);
-    BOARD(5, 4) = WHITE(protocol_PAWN);
-
-    BOARD(1, 5) = BLACK(protocol_QUEEN);
-    BOARD(7, 5) = BLACK(protocol_PAWN);
-
-    BOARD(3, 6) = BLACK(protocol_PAWN);
-    BOARD(4, 6) = BLACK(protocol_PAWN);
-
-    BOARD(1, 7) = BLACK(protocol_PAWN);
-    BOARD(2, 7) = BLACK(protocol_PAWN);
-    BOARD(5, 7) = BLACK(protocol_PAWN);
-    BOARD(6, 7) = BLACK(protocol_PAWN);
-    BOARD(8, 7) = BLACK(protocol_PAWN);
-
-    BOARD(1, 8) = BLACK(protocol_ROOK);
-    BOARD(2, 8) = BLACK(protocol_KNIGHT);
-    BOARD(3, 8) = BLACK(protocol_BISHOP);
-    BOARD(5, 8) = BLACK(protocol_KING);
-    BOARD(6, 8) = BLACK(protocol_BISHOP);
-    BOARD(7, 8) = BLACK(protocol_KNIGHT);
-    BOARD(8, 8) = BLACK(protocol_ROOK);
+    if (main_parseBoard("\
+XXXXXXXXXXXX\
+XXXXXXXXXXXX\
+XXr k qbnrXX\
+XXpbp   ppXX\
+XX p  p   XX\
+XX   pnp  XX\
+XX P     QXX\
+XX    PP  XX\
+XXP PP  PPXX\
+XXRNBK BNRXX\
+XXXXXXXXXXXX\
+XXXXXXXXXXXX") < 0) return 1;
 
     struct timespec startTime;
     struct timespec endTime;

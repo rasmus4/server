@@ -85,13 +85,14 @@ static int32_t recursive_evaluateBlackMove(int32_t blackPiece, int32_t to, int32
     uint8_t originalPiece = common_board[from];
     if (originalPiece == (protocol_PAWN | protocol_BLACK_FLAG) && to < common_CONVERT_INDEX(8)) {
         pieceValue += 8;
-    if (remainingDepth == 0) return -pieceValue;
+        if (remainingDepth == 0) return -pieceValue;
         common_board[from] = protocol_QUEEN | protocol_BLACK_FLAG;
     } else if (remainingDepth == 0) return -pieceValue;
 
     int32_t pieceIndex = pieceIndices[to];
     if (takenPiece != 0) {
         whitePieces[pieceIndex] = whitePieces[--whiteNumPieces];
+        pieceIndices[whitePieces[pieceIndex]] = pieceIndex;
     }
 
     // Find best response for white.
@@ -103,7 +104,7 @@ static int32_t recursive_evaluateBlackMove(int32_t blackPiece, int32_t to, int32
     for (int32_t i = 0; i < whiteNumPieces; ++i) {
         int32_t index = whitePieces[i];
         uint8_t piece = common_board[index];
-        if ((piece & protocol_WHITE_FLAG) == 0) continue;
+        assert(piece & protocol_WHITE_FLAG);
 
         int32_t testIndex;
         switch (piece & protocol_PIECE_MASK) {
@@ -184,6 +185,7 @@ static int32_t recursive_evaluateBlackMove(int32_t blackPiece, int32_t to, int32
         }
     }
     if (takenPiece != 0) {
+        pieceIndices[whitePieces[pieceIndex]] = whiteNumPieces;
         whitePieces[whiteNumPieces++] = whitePieces[pieceIndex];
         whitePieces[pieceIndex] = to;
     }
@@ -204,13 +206,14 @@ static int32_t recursive_evaluateWhiteMove(int32_t whitePiece, int32_t to, int32
     uint8_t originalPiece = common_board[from];
     if (originalPiece == (protocol_PAWN | protocol_WHITE_FLAG) && to >= common_CONVERT_INDEX(56)) {
         pieceValue += 8;
-    if (remainingDepth == 0) return pieceValue;
+        if (remainingDepth == 0) return pieceValue;
         common_board[from] = protocol_QUEEN | protocol_WHITE_FLAG;
     } else if (remainingDepth == 0) return pieceValue;
 
     int32_t pieceIndex = pieceIndices[to];
     if (takenPiece != 0) {
         blackPieces[pieceIndex] = blackPieces[--blackNumPieces];
+        pieceIndices[blackPieces[pieceIndex]] = pieceIndex;
     }
 
     // Find best response for black.
@@ -222,7 +225,7 @@ static int32_t recursive_evaluateWhiteMove(int32_t whitePiece, int32_t to, int32
     for (int32_t i = 0; i < blackNumPieces; ++i) {
         int32_t index = blackPieces[i];
         int32_t piece = common_board[index];
-        if ((piece & protocol_BLACK_FLAG) == 0) continue;
+        assert(piece & protocol_BLACK_FLAG);
 
         int32_t testIndex;
         switch (piece & protocol_PIECE_MASK) {
@@ -303,6 +306,7 @@ static int32_t recursive_evaluateWhiteMove(int32_t whitePiece, int32_t to, int32
         }
     }
     if (takenPiece != 0) {
+        pieceIndices[blackPieces[pieceIndex]] = blackNumPieces;
         blackPieces[blackNumPieces++] = blackPieces[pieceIndex];
         blackPieces[pieceIndex] = to;
     }
