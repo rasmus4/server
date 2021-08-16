@@ -1,9 +1,3 @@
-#include "base64.h"
-
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
-
 static uint8_t base64_table[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 static inline int32_t base64_encodeLength(int32_t inputLength) {

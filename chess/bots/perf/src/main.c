@@ -1,13 +1,3 @@
-#include "recursive.h"
-#include "protocol.h"
-#include "timespec.h"
-
-#include <time.h>
-#include <stdio.h>
-#include <inttypes.h>
-#include <string.h>
-#include <assert.h>
-
 #define BOARD(X, Y) main_board[63 - ((Y - 1) * 8 + (X - 1))]
 #define WHITE(PIECE) (PIECE | protocol_WHITE_FLAG)
 #define BLACK(PIECE) (PIECE | protocol_BLACK_FLAG)

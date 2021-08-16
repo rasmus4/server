@@ -1,11 +1,3 @@
-#pragma once
-#include "chessClient.h"
-#include "chessRoom.h"
-#include "server.h"
-#include "fileResponse.h"
-
-#include <stdint.h>
-
 struct chess {
     struct server server;
     struct fileResponse response;

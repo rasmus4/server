@@ -1,12 +1,3 @@
-#include "recursive.h"
-#include "common.h"
-#include "protocol.h"
-
-#include <assert.h>
-#include <stdlib.h>
-#include <limits.h>
-#include <string.h>
-
 static int32_t recursive_evaluateWhiteMove(int32_t whitePiece, int32_t to, int32_t remainingDepth, int32_t score, int32_t alpha, int32_t beta);
 
 #define recursive_DEPTH 5

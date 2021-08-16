@@ -1,6 +1,3 @@
-#include "common.h"
-#include "protocol.h"
-
 static void common_transformBoard(bool isHost, uint8_t *board) {
     // Make borders
     for (int32_t i = 0; i < 12; ++i) {

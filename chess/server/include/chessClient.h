@@ -1,8 +1,3 @@
-#pragma once
-
-#include <stdbool.h>
-#include <stdint.h>
-
 struct chessRoom;
 struct chess;
 struct serverClient;

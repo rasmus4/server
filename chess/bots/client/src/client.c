@@ -1,16 +1,3 @@
-#include "client.h"
-#include "protocol.h"
-
-#include <stdio.h>
-#include <string.h>
-
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/tcp.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#include <unistd.h>
-
 static const uint8_t client_GET_REQUEST[] = "GET /chess HTTP/1.1\r\nSec-WebSocket-Key: AQIDBAUGBwgJCgsMDQ4PEC==\r\n\r\n";
 
 static inline void client_create(struct client *self, client_makeMove makeMove) {

@@ -1,12 +1,3 @@
-#include "client.h"
-#include "recursive.h"
-#include "timespec.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <limits.h>
-
 static struct client main_client;
 
 int main(int argc, char **argv) {

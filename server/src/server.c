@@ -1,19 +1,3 @@
-#include "server.h"
-#include "base64.h"
-#include "serverClient.h"
-
-#include <stdio.h>
-#include <string.h>
-#include <stdbool.h>
-
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/tcp.h>
-#include <sys/types.h>
-#include <sys/epoll.h>
-#include <fcntl.h>
-#include <linux/if_alg.h>
-
 #define server_WEBSOCKET_ACCEPT_START \
     "HTTP/1.1 101 Switching Protocols\r\n" \
     "Upgrade: websocket\r\n" \

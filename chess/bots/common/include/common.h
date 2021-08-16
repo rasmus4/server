@@ -1,8 +1,3 @@
-#pragma once
-
-#include <stdbool.h>
-#include <stdint.h>
-
 #define common_MAX_MOVES 256
 #define common_CONVERT_INDEX(INDEX) (INDEX + 26 + 4 * (INDEX / 8))
 #define common_CONVERT_INDEX_BACK(INDEX) (INDEX - 18 - 4 * (INDEX / 12))

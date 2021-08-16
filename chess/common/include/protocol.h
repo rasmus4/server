@@ -1,5 +1,3 @@
-#pragma once
-
 #define protocol_VERSION 4
 
 enum protocol_clientOp {

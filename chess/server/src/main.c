@@ -1,15 +1,3 @@
-#include "chess.h"
-
-#include "timespec.h"
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <limits.h>
-#include <time.h>
-#include <sched.h>
-#include <sys/prctl.h>
-
 static struct chess main_chess;
 
 int main(int argc, char **argv) {

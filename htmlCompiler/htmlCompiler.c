@@ -74,7 +74,7 @@ static int writeToFile(char *fileName, char *content, int32_t contentLength) {
 }
 
 static int writeHeaderOutput(char *fileName, char *arrayName) {
-    char start[] = "#pragma once\n#include <stdint.h>\nstatic uint8_t ";
+    char start[] = "#include <stdint.h>\nstatic uint8_t ";
     char afterName[] = "[] = {";
     char betweenBytes[] = ",";
     char end[] = "};\n";

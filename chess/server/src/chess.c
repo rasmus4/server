@@ -1,12 +1,3 @@
-#include "chess.h"
-#include "protocol.h"
-#include "fileResponse.h"
-#include "timespec.h"
-#include "generatedHtml.h"
-
-#include <stdlib.h>
-#include <assert.h>
-
 static int chess_sendClientState(struct chess *self, struct chessClient *chessClient) {
     static uint8_t buffer[chessClient_writeState_MAX];
     int32_t length = chessClient_writeState(chessClient, &buffer[0]);

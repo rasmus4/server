@@ -1,15 +1,3 @@
-#include "chess.h"
-#include "chessClient.h"
-#include "protocol.h"
-#include "server.h"
-#include "timespec.h"
-
-#include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
-#include <assert.h>
-
 static void chessRoom_initBoard(struct chessRoom *self) {
     self->board[0] = self->board[7] = protocol_ROOK | protocol_WHITE_FLAG;
     self->board[1] = self->board[6] = protocol_KNIGHT | protocol_WHITE_FLAG;

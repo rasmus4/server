@@ -1,8 +1,3 @@
-#pragma once
-
-#include <stdint.h>
-#include <stdbool.h>
-
 #define client_RECEIVE_BUFFER_SIZE 1024
 #define client_SEND_BUFFER_SIZE 1024
 

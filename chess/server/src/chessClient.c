@@ -1,12 +1,3 @@
-#include "chessClient.h"
-#include "chess.h"
-#include "protocol.h"
-#include "chessRoom.h"
-
-#include <stdbool.h>
-#include <string.h>
-#include <assert.h>
-
 static void chessClient_create(struct chessClient *self, struct serverClient *client) {
     self->serverClient = client;
     chessClient_unsetRoom(self);

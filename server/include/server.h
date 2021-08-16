@@ -1,12 +1,3 @@
-#pragma once
-#include "fileResponse.h"
-#include "serverCallbacks.h"
-#include "serverClient.h"
-
-#include <sys/timerfd.h>
-#include <unistd.h>
-#include <stdbool.h>
-
 #define server_RECEIVE_BUFFER_SIZE 4096
 #define server_MAX_CLIENTS 256
 
