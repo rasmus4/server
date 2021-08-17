@@ -17,8 +17,8 @@ static inline bool chessClient_isHost(struct chessClient *self);
 static inline bool chessClient_isGuest(struct chessClient *self);
 static inline bool chessClient_isSpectator(struct chessClient *self);
 
-// Follows a newly made move unless watching old moves.
-static inline void chessClient_followNewMove(struct chessClient *self);
+// Should be called when a new move is added to the room.
+static inline void chessClient_onNewMove(struct chessClient *self);
 // Returns 0 if could scroll, else 1.
 static inline int chessClient_scrollMove(struct chessClient *self, bool forward);
 

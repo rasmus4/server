@@ -19,7 +19,7 @@ struct chessRoom {
     int32_t roomId;
     struct chessRoom_clientInfo host;
     struct chessRoom_clientInfo guest;
-    int32_t *spectators;
+    struct chessClient **spectators;
     int32_t numSpectators;
     uint8_t board[64];
     struct chessRoom_move *moves;
@@ -34,8 +34,8 @@ static inline void chessRoom_create(struct chessRoom *self, int32_t index);
 static int chessRoom_open(struct chessRoom *self, struct chessClient *host, int32_t roomId, struct server *server);
 static void chessRoom_close(struct chessRoom *self);
 static void chessRoom_start(struct chessRoom *self, struct chessClient *guest);
-static int chessRoom_addSpectator(struct chessRoom *self, int32_t clientIndex);
-static void chessRoom_removeSpectator(struct chessRoom *self, int32_t clientIndex);
+static int chessRoom_addSpectator(struct chessRoom *self, struct chessClient *spectator);
+static void chessRoom_removeSpectator(struct chessRoom *self, struct chessClient *spectator);
 
 static inline bool chessRoom_isOpen(struct chessRoom *self);
 static inline bool chessRoom_isFull(struct chessRoom *self);

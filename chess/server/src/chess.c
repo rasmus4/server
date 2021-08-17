@@ -24,7 +24,7 @@ static void chess_leaveRoom(struct chess *self, struct chessClient *chessClient)
     struct chessRoom *room = chessClient->room;
 
     if (chessClient_isSpectator(chessClient)) {
-        chessRoom_removeSpectator(room, chessClient->serverClient->index);
+        chessRoom_removeSpectator(room, chessClient);
         chessClient_unsetRoom(chessClient);
         return;
     }
@@ -37,8 +37,8 @@ static void chess_leaveRoom(struct chess *self, struct chessClient *chessClient)
         }
 
         while (room->numSpectators) {
-            struct chessClient *spectator = &self->clients[room->spectators[0]];
-            chessRoom_removeSpectator(room, spectator->serverClient->index);
+            struct chessClient *spectator = room->spectators[0];
+            chessRoom_removeSpectator(room, spectator);
             chessClient_unsetRoom(spectator);
             if (chess_sendClientState(self, spectator) < 0) {
                 server_closeClient(&self->server, spectator->serverClient);
@@ -82,7 +82,7 @@ static int chess_handleJoin(struct chess *self, struct chessClient *chessClient,
     }
 
     for (int32_t i = 0; i < room->numSpectators; ++i) {
-        struct chessClient *spectator = &self->clients[room->spectators[i]];
+        struct chessClient *spectator = room->spectators[i];
         if (chess_sendClientState(self, spectator) < 0) {
             server_closeClient(&self->server, spectator->serverClient);
         }
@@ -109,7 +109,7 @@ static int chess_handleSpectate(struct chess *self, struct chessClient *chessCli
     return 0; // Doesn't exist.
     found:
 
-    if (chessRoom_addSpectator(room, chessClient->serverClient->index) < 0) return 0;
+    if (chessRoom_addSpectator(room, chessClient) < 0) return 0;
     chessClient_setRoom(chessClient, room);
 
     if (chess_sendClientState(self, chessClient) < 0) return -2;
@@ -137,19 +137,16 @@ static int chess_handleMove(struct chess *self, struct chessClient *chessClient,
         chessRoom_doMove(room, fromIndex, toIndex, isHost);
 
         struct chessClient *opponent = isHost ? room->guest.client : room->host.client;
-        chessClient_followNewMove(opponent);
         if (chess_sendClientState(self, opponent) < 0) {
             server_closeClient(&self->server, opponent->serverClient);
         }
 
         for (int32_t i = 0; i < room->numSpectators; ++i) {
-            struct chessClient *spectator = &self->clients[room->spectators[i]];
-            chessClient_followNewMove(spectator);
+            struct chessClient *spectator = room->spectators[i];
             if (chess_sendClientState(self, spectator) < 0) {
                 server_closeClient(&self->server, spectator->serverClient);
             }
         }
-        chessClient_followNewMove(chessClient);
         if (chess_sendClientState(self, chessClient) < 0) return -2;
     }
     return 0;
@@ -259,7 +256,7 @@ static void chess_onTimer(void *self, int *timerHandle, uint64_t expirations) {
     }
 
     for (int32_t i = 0; i < room->numSpectators; ++i) {
-        struct chessClient *spectator = &SELF->clients[room->spectators[i]];
+        struct chessClient *spectator = room->spectators[i];
         if (chess_sendClientState(SELF, spectator) < 0) {
             server_closeClient(&SELF->server, spectator->serverClient);
         }

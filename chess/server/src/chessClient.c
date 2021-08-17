@@ -35,7 +35,7 @@ static inline bool chessClient_isSpectator(struct chessClient *self) {
     return true;
 }
 
-static inline void chessClient_followNewMove(struct chessClient *self) {
+static inline void chessClient_onNewMove(struct chessClient *self) {
     if (self->move == self->room->numMoves - 1) ++self->move;
 }
 

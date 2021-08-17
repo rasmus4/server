@@ -32,6 +32,18 @@
 #include "include/chessRoom.h"
 #include "include/chess.h"
 
+#if(0)
+static void *myrealloc(void *ptr, size_t size) {
+    static int counter = 0;
+    if (counter++ <= 2) return realloc(ptr, size);
+    return NULL;
+}
+
+#define malloc(LEN) myrealloc(NULL, LEN)
+#define realloc myrealloc
+#define free(X)
+#endif
+
 #include "src/main.c"
 #include "src/chess.c"
 #include "src/chessRoom.c"

@@ -134,40 +134,29 @@ static void chessRoom_start(struct chessRoom *self, struct chessClient *guest) {
     self->guest.timeSpent = 0;
 
     chessRoom_initBoard(self);
-
-    struct timespec currentTimespec;
-    clock_gettime(CLOCK_MONOTONIC, &currentTimespec);
-    self->host.lastUpdate = timespec_toNanoseconds(currentTimespec);
-
-    struct itimerspec spec = {
-        .it_interval.tv_sec = 1,
-        .it_value.tv_sec = currentTimespec.tv_sec + 1,
-        .it_value.tv_nsec = currentTimespec.tv_nsec
-    };
-    server_startTimer(self->secondTimerHandle, &spec, true);
 }
 
-static int chessRoom_addSpectator(struct chessRoom *self, int32_t clientIndex) {
+static int chessRoom_addSpectator(struct chessRoom *self, struct chessClient *spectator) {
     if (self->numSpectators == INT32_MAX) return -1; // Never know ;)
-    int32_t *newSpectators = realloc(self->spectators, (self->numSpectators + 1) * sizeof(self->spectators[0]));
+    struct chessClient **newSpectators = realloc(self->spectators, (self->numSpectators + 1) * sizeof(self->spectators[0]));
     if (newSpectators == NULL) return -2;
 
-    newSpectators[self->numSpectators] = clientIndex;
+    newSpectators[self->numSpectators] = spectator;
     self->spectators = newSpectators;
     ++self->numSpectators;
     return 0;
 }
 
-static void chessRoom_removeSpectator(struct chessRoom *self, int32_t clientIndex) {
-    int32_t *current = &self->spectators[0];
+static void chessRoom_removeSpectator(struct chessRoom *self, struct chessClient *spectator) {
+    struct chessClient **current = &self->spectators[0];
     for (;; ++current) {
         assert(current < &self->spectators[self->numSpectators]);
-        if (*current == clientIndex) {
+        if (*current == spectator) {
             --self->numSpectators;
             *current = self->spectators[self->numSpectators];
             if (self->numSpectators == 0) return; // Probably not worth freeing completely.
 
-            int32_t *newSpectators = realloc(self->spectators, self->numSpectators * sizeof(self->spectators[0]));
+            struct chessClient **newSpectators = realloc(self->spectators, self->numSpectators * sizeof(self->spectators[0]));
             if (newSpectators != NULL) self->spectators = newSpectators;
             return;
         }
@@ -259,9 +248,23 @@ static inline void chessRoom_updateMoves(struct chessRoom *self, struct chessRoo
     }
     self->moves[self->numMoves] = *lastMove;
     ++self->numMoves;
+    chessClient_onNewMove(self->host.client);
+    chessClient_onNewMove(self->guest.client);
+    for (int32_t i = 0; i < self->numSpectators; ++i) {
+        chessClient_onNewMove(self->spectators[i]);
+    }
 }
 
 static void chessRoom_doMove(struct chessRoom *self, int32_t fromIndex, int32_t toIndex, bool hostPov) {
+    struct timespec currentTimespec;
+    clock_gettime(CLOCK_MONOTONIC, &currentTimespec);
+    int64_t currentTime = timespec_toNanoseconds(currentTimespec);
+
+    // Initialise timer if first move.
+    if (self->numMoves == 0) {
+        self->host.lastUpdate = currentTime;
+    }
+
     struct chessRoom_move move;
     move.fromIndex = chessRoom_convertIndex(fromIndex, hostPov);
     move.piece = self->board[move.fromIndex];
@@ -283,10 +286,6 @@ static void chessRoom_doMove(struct chessRoom *self, int32_t fromIndex, int32_t 
         if (move.replacePiece & protocol_WHITE_FLAG) self->winner = protocol_BLACK_WIN;
         else self->winner = protocol_WHITE_WIN;
     }
-
-    struct timespec currentTimespec;
-    clock_gettime(CLOCK_MONOTONIC, &currentTimespec);
-    int64_t currentTime = timespec_toNanoseconds(currentTimespec);
 
     chessRoom_updateTimeSpent(self, currentTime);
 
