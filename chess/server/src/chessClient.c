@@ -55,7 +55,7 @@ static int32_t chessClient_writeState(struct chessClient *self, uint8_t *buffer)
         bool hostPov = !chessClient_isGuest(self); // Host pov for spectators too.
         buffer[0] = protocol_CHESS;
         buffer[1] = chessRoom_isHostsTurn(self->room) ? 1 : 0;
-        buffer[2] = chessRoom_winner(self->room);
+        buffer[2] = (uint8_t)chessRoom_winner(self->room);
 
         struct chessRoom_move currentMove = chessRoom_getMove(self->room, self->move, hostPov);
         buffer[3] = (uint8_t)currentMove.fromIndex;
