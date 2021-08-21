@@ -137,8 +137,8 @@ static void chessRoom_start(struct chessRoom *self, struct chessClient *guest) {
 }
 
 static int chessRoom_addSpectator(struct chessRoom *self, struct chessClient *spectator) {
-    if (self->numSpectators == INT32_MAX) return -1; // Never know ;)
-    struct chessClient **newSpectators = realloc(self->spectators, (self->numSpectators + 1) * sizeof(self->spectators[0]));
+    if (self->numSpectators == (INT32_MAX / sizeof(self->spectators[0]))) return -1; // Never know ;)
+    struct chessClient **newSpectators = realloc(self->spectators, (size_t)((self->numSpectators + 1) * (int32_t)sizeof(self->spectators[0])));
     if (newSpectators == NULL) return -2;
 
     newSpectators[self->numSpectators] = spectator;
@@ -156,7 +156,7 @@ static void chessRoom_removeSpectator(struct chessRoom *self, struct chessClient
             *current = self->spectators[self->numSpectators];
             if (self->numSpectators == 0) return; // Probably not worth freeing completely.
 
-            struct chessClient **newSpectators = realloc(self->spectators, self->numSpectators * sizeof(self->spectators[0]));
+            struct chessClient **newSpectators = realloc(self->spectators, (size_t)(self->numSpectators * (int32_t)sizeof(self->spectators[0])));
             if (newSpectators != NULL) self->spectators = newSpectators;
             return;
         }
@@ -237,10 +237,10 @@ static inline void chessRoom_updateMoves(struct chessRoom *self, struct chessRoo
         struct chessRoom_move *newMoves;
         if (
             self->numMoves == INT32_MAX || // ...
-            (newMoves = realloc(self->moves, (self->numMoves + 1) * sizeof(self->moves[0]))) == NULL
+            (newMoves = realloc(self->moves, (size_t)((self->numMoves + 1) * (int64_t)sizeof(self->moves[0])))) == NULL
         ) {
             // Forget oldest move.
-            memmove(&self->moves[0], &self->moves[1], (self->numMoves - 1) * (sizeof(self->moves[0])));
+            memmove(&self->moves[0], &self->moves[1], (size_t)((self->numMoves - 1) * (int64_t)sizeof(self->moves[0])));
             self->moves[self->numMoves - 1] = *lastMove;
             return;
         }
@@ -271,14 +271,14 @@ static void chessRoom_doMove(struct chessRoom *self, int32_t fromIndex, int32_t 
     move.toIndex = chessRoom_convertIndex(toIndex, hostPov);
     move.replacePiece = self->board[move.toIndex];
 
-    uint8_t newPiece;
+    int32_t newPiece;
     if (toIndex >= 56 && (move.piece & protocol_PIECE_MASK) == protocol_PAWN) {
         newPiece = protocol_QUEEN | (move.piece & protocol_WHITE_FLAG); // Promotion
     } else {
         newPiece = move.piece;
     }
 
-    self->board[move.toIndex] = newPiece;
+    self->board[move.toIndex] = (uint8_t)newPiece;
     self->board[move.fromIndex] = protocol_NO_PIECE;
     chessRoom_updateMoves(self, &move);
 

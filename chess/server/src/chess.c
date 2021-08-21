@@ -274,9 +274,9 @@ static int chess_initFileResponse(struct chess *self) {
     }
     char responseHttpStart[] = "HTTP/1.1 200 OK\r\nContent-Length:";
     char responseHttpEnd[] = "\r\n\r\n";
-    int32_t responseLength = (sizeof(responseHttpStart) - 1) + digits + (sizeof(responseHttpEnd) - 1) + sizeof(generatedHtml);
+    int32_t responseLength = ((int32_t)sizeof(responseHttpStart) - 1) + digits + ((int32_t)sizeof(responseHttpEnd) - 1) + (int32_t)sizeof(generatedHtml);
 
-    uint8_t *responseBuffer = malloc(responseLength);
+    uint8_t *responseBuffer = malloc((size_t)responseLength);
     if (responseBuffer == NULL) return -1;
 
     memcpy(responseBuffer, responseHttpStart, sizeof(responseHttpStart) - 1);
@@ -287,7 +287,7 @@ static int chess_initFileResponse(struct chess *self) {
         magnitude /= 10;
         int32_t digitValue = remainingLength / magnitude;
         remainingLength -= digitValue * magnitude;
-        *responsePos = '0' + digitValue;
+        *responsePos = (uint8_t)('0' + digitValue);
         ++responsePos;
     }
 

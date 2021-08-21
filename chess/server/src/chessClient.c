@@ -58,8 +58,8 @@ static int32_t chessClient_writeState(struct chessClient *self, uint8_t *buffer)
         buffer[2] = chessRoom_winner(self->room);
 
         struct chessRoom_move currentMove = chessRoom_getMove(self->room, self->move, hostPov);
-        buffer[3] = currentMove.fromIndex;
-        buffer[4] = currentMove.toIndex;
+        buffer[3] = (uint8_t)currentMove.fromIndex;
+        buffer[4] = (uint8_t)currentMove.toIndex;
 
         int64_t timeSpent = chessRoom_timeSpent(self->room, hostPov);
         int64_t opponentTimeSpent = chessRoom_timeSpent(self->room, !hostPov);

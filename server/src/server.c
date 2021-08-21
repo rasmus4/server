@@ -152,22 +152,22 @@ static int server_sendWebsocketMessage(struct server *self, struct serverClient 
 
     int32_t headerLength;
     if (messageLength < 126) {
-        self->scratchSpace[1] = messageLength;
+        self->scratchSpace[1] = (uint8_t)messageLength;
         headerLength = 2;
     } else {
         self->scratchSpace[1] = 126;
-        self->scratchSpace[2] = messageLength >> 8;
-        self->scratchSpace[3] = messageLength & 0xFF;
+        self->scratchSpace[2] = (uint8_t)(messageLength >> 8);
+        self->scratchSpace[3] = (uint8_t)(messageLength & 0xFF);
         headerLength = 4;
     }
 
     struct iovec iov[2] = {
         {
             .iov_base = &self->scratchSpace[0],
-            .iov_len = headerLength
+            .iov_len = (size_t)headerLength
         }, {
             .iov_base = message,
-            .iov_len = messageLength
+            .iov_len = (size_t)messageLength
         }
     };
     struct msghdr msg = {
@@ -188,7 +188,7 @@ static int server_handleWebsocket(struct server *self, struct serverClient *clie
     bool masking = client->receiveBuffer[1] & 0x80;
     if (!masking) return -2;
 
-    int64_t payloadLength = client->receiveBuffer[1] & 0x7F;
+    uint64_t payloadLength = client->receiveBuffer[1] & 0x7F;
     int32_t maskingKeyIndex;
     if (payloadLength == 126) {
         if (client->receiveLength < 4) return 1;
@@ -212,16 +212,16 @@ static int server_handleWebsocket(struct server *self, struct serverClient *clie
         maskingKeyIndex = 10;
     } else maskingKeyIndex = 2;
     int32_t payloadStart = maskingKeyIndex + 4;
-    if (client->receiveLength - payloadStart < payloadLength) return 1;
+    if ((uint64_t)(client->receiveLength - payloadStart) < payloadLength) return 1;
 
-    for (int32_t i = 0; i < payloadLength; ++i) {
+    for (int32_t i = 0; i < (int32_t)payloadLength; ++i) {
         client->receiveBuffer[payloadStart + i] ^= client->receiveBuffer[maskingKeyIndex + (i % 4)];
     }
 
     switch (opcode) {
         case 0x1:   // Text
         case 0x2: { // Binary
-            if (self->callbacks.onMessage(self->callbacks.data, client, &client->receiveBuffer[payloadStart], payloadLength, opcode & 0x1) != 0) return -3;
+            if (self->callbacks.onMessage(self->callbacks.data, client, &client->receiveBuffer[payloadStart], (int32_t)payloadLength, opcode & 0x1) != 0) return -3;
             break;
         }
         case 0x8: { // Close
@@ -303,7 +303,7 @@ static int server_handleHttpRequest(struct server *self, struct serverClient *cl
             client->receiveLength = 0;
 
             int32_t len = server_WEBSOCKET_ACCEPT_START_LEN + base64Len + 4;
-            if (send(client->fd, self->scratchSpace, len, MSG_NOSIGNAL) != len) return -3;
+            if (send(client->fd, self->scratchSpace, (size_t)len, MSG_NOSIGNAL) != len) return -3;
             if (self->callbacks.onConnect(self->callbacks.data, client) != 0) return -4;
             // Only set this if the callback accepts the new connection.
             client->isWebsocket = true;
@@ -314,9 +314,9 @@ static int server_handleHttpRequest(struct server *self, struct serverClient *cl
         for (int32_t i = 0; i < self->fileResponsesLength; ++i) {
             if (
                 self->fileResponses[i].urlLength == urlLength &&
-                memcmp(self->fileResponses[i].url, urlStart, urlLength) == 0
+                memcmp(self->fileResponses[i].url, urlStart, (size_t)urlLength) == 0
             ) {
-                if (send(client->fd, self->fileResponses[i].response, self->fileResponses[i].responseLength, MSG_NOSIGNAL) != self->fileResponses[i].responseLength) return -3;
+                if (send(client->fd, self->fileResponses[i].response, (size_t)self->fileResponses[i].responseLength, MSG_NOSIGNAL) != self->fileResponses[i].responseLength) return -3;
                 return 0;
             }
         }
@@ -339,7 +339,7 @@ static int server_handleClient(struct server *self, struct serverClient *client)
     }
 
     uint8_t *receivePosition = &client->receiveBuffer[client->receiveLength];
-    ssize_t recvLength = recv(client->fd, receivePosition, remainingBuffer, 0);
+    int32_t recvLength = (int32_t)recv(client->fd, receivePosition, (size_t)remainingBuffer, 0);
     if (recvLength < 0) {
         server_closeClient(self, client);
         return -2;

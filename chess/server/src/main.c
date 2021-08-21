@@ -3,7 +3,7 @@ static struct chess main_chess;
 int main(int argc, char **argv) {
     struct timespec currentTime;
     clock_gettime(CLOCK_MONOTONIC, &currentTime);
-    unsigned int seed = timespec_toNanoseconds(currentTime) % UINT_MAX;
+    unsigned int seed = (unsigned int)(timespec_toNanoseconds(currentTime) % UINT_MAX);
     srand(seed);
 
     struct sched_param schedparm = {
