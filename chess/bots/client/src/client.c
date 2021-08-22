@@ -7,7 +7,7 @@ static inline void client_create(struct client *self, client_makeMove makeMove) 
 
 // Return is same as recv().
 static int client_receive(struct client *self) {
-    int status = recv(self->socketFd, &self->receiveBuffer[self->received], client_RECEIVE_BUFFER_SIZE - self->received, 0);
+    int32_t status = (int32_t)recv(self->socketFd, &self->receiveBuffer[self->received], (size_t)(client_RECEIVE_BUFFER_SIZE - self->received), 0);
     if (status > 0) self->received += status;
     return status;
 }
@@ -23,7 +23,7 @@ static int client_receiveWebsocket(struct client *self, uint8_t **payload, int32
 
 static inline void client_ack(struct client *self, int32_t length) {
     self->received -= length;
-    memmove(&self->receiveBuffer[0], &self->receiveBuffer[length], self->received);
+    memmove(&self->receiveBuffer[0], &self->receiveBuffer[length], (size_t)self->received);
 }
 
 static inline void client_ackWebsocket(struct client *self) {
@@ -31,7 +31,8 @@ static inline void client_ackWebsocket(struct client *self) {
 }
 
 static int client_sendWebsocket(struct client *self, int32_t length) {
-    uint8_t frame[6] = { 0x82, 0x80 | length, 0, 0, 0, 0 };
+    if (length >= 126) return -1;
+    uint8_t frame[6] = { 0x82, (uint8_t)(0x80 | length), 0, 0, 0, 0 };
 
     struct iovec iov[2] = {
         {
@@ -39,14 +40,14 @@ static int client_sendWebsocket(struct client *self, int32_t length) {
             .iov_len = 6
         }, {
             .iov_base = &self->sendBuffer[0],
-            .iov_len = length
+            .iov_len = (size_t)length
         }
     };
     struct msghdr msg = {
         .msg_iov = &iov[0],
         .msg_iovlen = 2,
     };
-    if (sendmsg(self->socketFd, &msg, MSG_NOSIGNAL) != 6 + length) return -1;
+    if (sendmsg(self->socketFd, &msg, MSG_NOSIGNAL) != 6 + length) return -2;
     return 0;
 }
 
@@ -78,8 +79,8 @@ static int client_onChessUpdate(struct client *self, uint8_t *payload, int32_t l
         moveTo / 8
     );
     self->sendBuffer[0] = protocol_MOVE;
-    self->sendBuffer[1] = moveFrom;
-    self->sendBuffer[2] = moveTo;
+    self->sendBuffer[1] = (uint8_t)moveFrom;
+    self->sendBuffer[2] = (uint8_t)moveTo;
 
     if (client_sendWebsocket(self, 3) < 0) return -2;
     return 0;
@@ -100,7 +101,7 @@ static int client_run(struct client *self, char *address, int32_t port, int32_t 
 
     struct sockaddr_in serverAddr;
     serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(port);
+    serverAddr.sin_port = htons((uint16_t)port);
     status = inet_pton(AF_INET, address, &serverAddr.sin_addr.s_addr);
     if (status < 0) {
         status = -3;

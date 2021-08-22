@@ -1,2 +1,3 @@
 set -e
-gcc -fsanitize=undefined -fsanitize=address -g -Wall -Wpedantic -Wextra -Wconversion -o htmlPacker htmlPacker.c
+CC=${CC:-gcc}
+$CC -fsanitize=undefined -fsanitize=address -g -Wall -Wpedantic -Wextra -Wconversion -o htmlPacker.bin htmlPacker.c

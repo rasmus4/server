@@ -3,7 +3,7 @@ static struct client main_client;
 int main(int argc, char **argv) {
     struct timespec currentTime;
     clock_gettime(CLOCK_MONOTONIC, &currentTime);
-    unsigned int seed = timespec_toNanoseconds(currentTime) % UINT_MAX;
+    unsigned int seed = (unsigned int)(timespec_toNanoseconds(currentTime) % UINT_MAX);
     srand(seed);
 
     int32_t roomId = -1;

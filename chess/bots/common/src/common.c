@@ -44,7 +44,7 @@ static void common_dumpBoard(void) {
                 default: UNREACHABLE;
             }
             if (piece & protocol_WHITE_FLAG) {
-                symbol -= 32;
+                symbol = (char)(symbol - 32);
             }
             done:
             printf("%c", symbol);
