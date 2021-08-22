@@ -106,6 +106,7 @@ static int32_t recursive_evaluateBlackMove(int32_t blackPiece, int32_t to, int32
 
     int32_t pieceIndex = pieceIndices[to];
     if (takenPiece != 0) {
+        assert(pieceIndex < whiteNumPieces);
         whitePieces[pieceIndex] = whitePieces[--whiteNumPieces];
         pieceIndices[whitePieces[pieceIndex]] = pieceIndex;
     }
@@ -246,6 +247,7 @@ static int32_t recursive_evaluateWhiteMove(int32_t whitePiece, int32_t to, int32
 
     int32_t pieceIndex = pieceIndices[to];
     if (takenPiece != 0) {
+        assert(pieceIndex < blackNumPieces);
         blackPieces[pieceIndex] = blackPieces[--blackNumPieces];
         pieceIndices[blackPieces[pieceIndex]] = pieceIndex;
     }

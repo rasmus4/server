@@ -195,10 +195,7 @@ static bool chessRoom_isMoveValid(struct chessRoom *self, int32_t fromIndex, int
     if (hostsPiece != hostPov) return false;
 
     uint8_t destPiece = self->board[chessRoom_convertIndex(toIndex, hostPov)];
-    if (destPiece != protocol_NO_PIECE) {
-        bool hostsDestPiece = destPiece & protocol_WHITE_FLAG;
-        if (hostsDestPiece == hostPov) return false; // Can't take ur own pieces.
-    }
+    if ((piece & (protocol_WHITE_FLAG | protocol_BLACK_FLAG)) == (destPiece & (protocol_WHITE_FLAG | protocol_BLACK_FLAG))) return false; // Can't take your own pieces.
 
     int32_t fromX = fromIndex % 8;
     int32_t fromY = fromIndex / 8;
@@ -273,7 +270,7 @@ static void chessRoom_doMove(struct chessRoom *self, int32_t fromIndex, int32_t 
 
     int32_t newPiece;
     if (toIndex >= 56 && (move.piece & protocol_PIECE_MASK) == protocol_PAWN) {
-        newPiece = protocol_QUEEN | (move.piece & protocol_WHITE_FLAG); // Promotion
+        newPiece = protocol_QUEEN | (move.piece & ~protocol_PIECE_MASK); // Promotion
     } else {
         newPiece = move.piece;
     }
