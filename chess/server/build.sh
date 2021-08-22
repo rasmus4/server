@@ -1,7 +1,7 @@
 set -e
 
-(cd ../../htmlCompiler && ./build.sh)
-(cd client && ../../../htmlCompiler/htmlCompiler html/main.html generatedHtml)
+(cd ../../htmlPacker && ./build.sh)
+(cd client && ../../../htmlPacker/htmlPacker html/main.html generatedHtml)
 echo "Client build success"
 
 common_flags="-Wpedantic -Wall -Wextra -Wconversion -Wno-unused-parameter"
