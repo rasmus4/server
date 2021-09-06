@@ -1,7 +1,3 @@
-#pragma once
-
-#include <stdint.h>
-
 struct fileResponse {
     uint8_t *url;
     int32_t urlLength;

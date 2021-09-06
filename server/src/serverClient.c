@@ -1,5 +1,3 @@
-#include "serverClient.h"
-
 static inline void serverClient_init(struct serverClient *self, int32_t index) {
     self->fd = -1;
     self->index = index;

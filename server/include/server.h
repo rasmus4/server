@@ -1,23 +1,16 @@
-#pragma once
-#include "include/fileResponse.h"
-#include "include/serverCallbacks.h"
-#include "include/serverClient.h"
-
-#include <sys/timerfd.h>
-#include <unistd.h>
-#include <stdbool.h>
-
 #define server_RECEIVE_BUFFER_SIZE 4096
 #define server_MAX_CLIENTS 256
 
 struct server {
     int listenSocketFd;
     int epollFd;
+    int sha1SocketFd;
+    int sha1InstanceFd;
     struct serverClient clients[server_MAX_CLIENTS];
     struct fileResponse *fileResponses;
     int32_t fileResponsesLength;
     struct serverCallbacks callbacks;
-    uint8_t scratchSpace[1024];
+    uint8_t scratchSpace[512];
 };
 
 static int server_init(

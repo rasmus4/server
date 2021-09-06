@@ -1,4 +1,4 @@
-// HTML compiler that allows includes and outputs the result as a C array.
+// HTML packer that allows includes and outputs the result as a C array.
 // Includes are done with <!--INCLUDE(src/main.js)--> or with /*INCLUDE(src/main.js)*/
 
 #include <stdio.h>
@@ -9,98 +9,97 @@
 static char *buffer = NULL;
 static int32_t bufferLength = 0;
 
+#define READ_SIZE 4096
 static int replaceWithFile(int32_t replaceIndex, int32_t replaceLength, char *fileName, int32_t fileNameLength) {
-    int status;
-    char *fileNameZ = malloc(fileNameLength + 1);
-    if (!fileNameZ) {
-        status = -1;
-        goto cleanup_none;
-    }
-    memcpy(fileNameZ, fileName, fileNameLength);
+    char *fileNameZ = malloc((size_t)(fileNameLength + 1));
+    if (fileNameZ == NULL) return -1;
+    memcpy(fileNameZ, fileName, (size_t)fileNameLength);
     fileNameZ[fileNameLength] = '\0';
 
+    int status;
     FILE *handle = fopen(fileNameZ, "r");
-    if (!handle) {
+    if (handle == NULL) {
         status = -2;
         goto cleanup_fileNameZ;
     }
 
-    if (fseek(handle, 0, SEEK_END) != 0) {
-        status = -3;
-        goto cleanup_handle;
-    }
-    int32_t length = ftell(handle);
-    if (length < 0) {
-        status = -4;
-        goto cleanup_handle;
-    }
-    rewind(handle);
+    char *content = NULL;
+    int32_t contentLength = 0;
 
-    int32_t newBufferLength = bufferLength + (length - replaceLength);
+    for (;;) {
+        content = realloc(content, (size_t)(contentLength + READ_SIZE));
+        if (content == NULL) {
+            status = -3;
+            goto cleanup_content;
+        }
+        int32_t readSize = (int32_t)fread(&content[contentLength], 1, READ_SIZE, handle);
+        contentLength += readSize;
+        if (readSize != READ_SIZE) {
+            if (feof(handle) != 0) break;
+            status = -4;
+            goto cleanup_content;
+        }
+    }
+
+    int32_t newBufferLength = bufferLength + (contentLength - replaceLength);
     if (newBufferLength > bufferLength) {
-        char *newBuffer = realloc(buffer, newBufferLength + 1);
-        if (!newBuffer) {
+        char *newBuffer = realloc(buffer, (size_t)(newBufferLength + 1));
+        if (newBuffer == NULL) {
             status = -5;
             goto cleanup_handle;
         }
         buffer = newBuffer;
     }
-    memmove(&buffer[replaceIndex + length], &buffer[replaceIndex + replaceLength], bufferLength - (replaceLength + replaceIndex));
-    buffer[newBufferLength] = '\0';
+    // Move existing content
+    memmove(&buffer[replaceIndex + contentLength], &buffer[replaceIndex + replaceLength], (size_t)(bufferLength - (replaceLength + replaceIndex)));
     bufferLength = newBufferLength;
-    int readSize = fread(&buffer[replaceIndex], 1, length, handle);
-    if (readSize != length) {
-        status = -6;
-        goto cleanup_handle;
-    }
+    buffer[newBufferLength] = '\0';
+    // Insert new content
+    memcpy(&buffer[replaceIndex], &content[0], (size_t)contentLength);
+
     status = 0;
+    cleanup_content:
+    free(content);
     cleanup_handle:
     fclose(handle);
     cleanup_fileNameZ:
     free(fileNameZ);
-    cleanup_none:
     return status;
 }
+#undef READ_SIZE
 
 static int writeToFile(char *fileName, char *content, int32_t contentLength) {
-    int status;
     FILE *handle = fopen(fileName, "w");
-    if (!handle) {
-        status = -1;
-        goto cleanup_none;
-    }
-    if (fwrite(content, 1, contentLength, handle) != (size_t)contentLength) {
+    if (handle == NULL) return -1;
+
+    int status;
+    if (fwrite(content, 1, (size_t)contentLength, handle) != (size_t)contentLength) {
         status = -2;
         goto cleanup_handle;
     };
     status = 0;
     cleanup_handle:
     fclose(handle);
-    cleanup_none:
     return status;
 }
 
 static int writeHeaderOutput(char *fileName, char *arrayName) {
-    int status;
-    char start[] = "#pragma once\n#include <stdint.h>\nstatic uint8_t ";
+    char start[] = "#include <stdint.h>\nstatic uint8_t ";
     char afterName[] = "[] = {";
     char betweenBytes[] = ",";
     char end[] = "};\n";
 
     int32_t maxLength = (
-        (sizeof(start) - 1) +
-        strlen(arrayName) +
-        (sizeof(afterName) - 1) +
-        (3 + (sizeof(betweenBytes) - 1)) * (bufferLength - 1) +
-        (sizeof(end) - 1) +
+        ((int32_t)sizeof(start) - 1) +
+        (int32_t)strlen(arrayName) +
+        ((int32_t)sizeof(afterName) - 1) +
+        (3 + ((int32_t)sizeof(betweenBytes) - 1)) * (bufferLength - 1) +
+        ((int32_t)sizeof(end) - 1) +
         1
     );
 
-    char *outBuffer = malloc(maxLength);
-    if (!outBuffer) {
-        status = -1;
-        goto cleanup_none;
-    }
+    char *outBuffer = malloc((size_t)maxLength);
+    if (outBuffer == NULL) return -1;
     outBuffer[0] = '\0';
     strcat(outBuffer, start);
     strcat(outBuffer, arrayName);
@@ -112,7 +111,7 @@ static int writeHeaderOutput(char *fileName, char *arrayName) {
     }
     strcat(outBuffer, end);
 
-    status = writeToFile(fileName, outBuffer, strlen(outBuffer));
+    int status = writeToFile(fileName, outBuffer, (int32_t)strlen(outBuffer));
     if (status < 0) {
         status = -2;
         goto cleanup_outBuffer;
@@ -121,48 +120,36 @@ static int writeHeaderOutput(char *fileName, char *arrayName) {
     status = 0;
     cleanup_outBuffer:
     free(outBuffer);
-    cleanup_none:
     return status;
 }
 
 static int handleInclude(char *includeStartPattern, char *includeEndPattern) {
-    int status;
     char *includeStart = strstr(buffer, includeStartPattern);
-    if (!includeStart) {
-        status = 1;
-        goto cleanup_none;
-    }
+    if (includeStart == NULL) return 1;
     char *includeEnd = strstr(includeStart, includeEndPattern);
-    if (!includeEnd) {
+    if (includeEnd == NULL) {
         printf("Error: Unclosed include\n");
-        status = -1;
-        goto cleanup_none;
+        return -1;
     }
     char *name = &includeStart[strlen(includeStartPattern)];
     int32_t nameLength = (int32_t)(includeEnd - name);
-    status = replaceWithFile((int32_t)(includeStart - buffer), (int32_t)(includeEnd + strlen(includeEndPattern) - includeStart), name, nameLength);
+    int status = replaceWithFile((int32_t)(includeStart - buffer), (int32_t)(includeEnd + strlen(includeEndPattern) - includeStart), name, nameLength);
     if (status < 0) {
         printf("Error: Failed to include file %.*s (%d)\n", nameLength, name, status);
-        status = -2;
-        goto cleanup_none;
+        return -2;
     }
-    status = 0;
-    cleanup_none:
-    return status;
+    return 0;
 }
 
 int main(int argc, char **argv) {
-    int status;
     if (argc != 3) {
         printf("Usage: %s infile.html outname\n", argv[0]);
-        status = 1;
-        goto cleanup_none;
+        return 1;
     }
-    status = replaceWithFile(0, 0, argv[1], strlen(argv[1]));
+    int status = replaceWithFile(0, 0, argv[1], (int32_t)strlen(argv[1]));
     if (status < 0) {
         printf("Error: Failed to load initial file %s (%d)\n", argv[1], status);
-        status = 1;
-        goto cleanup_none;
+        return 1;
     }
 
     int complete = 0;
@@ -184,14 +171,14 @@ int main(int argc, char **argv) {
         complete &= status;
     }
 
-    int32_t outNameLength = strlen(argv[2]);
-    char *outName = malloc(outNameLength + 6); // 6 enough for ".html" and ".h".
-    if (!outName) {
+    int32_t outNameLength = (int32_t)strlen(argv[2]);
+    char *outName = malloc((size_t)(outNameLength + 6)); // 6 enough for ".html" and ".h".
+    if (outName == NULL) {
         printf("Error: Failed to allocate memory\n");
         status = 1;
         goto cleanup_buffer;
     }
-    memcpy(outName, argv[2], outNameLength);
+    memcpy(outName, argv[2], (size_t)outNameLength);
     memcpy(&outName[outNameLength], ".html", 6);
     status = writeToFile(outName, buffer, bufferLength);
     if (status < 0) {
@@ -212,6 +199,5 @@ int main(int argc, char **argv) {
     free(outName);
     cleanup_buffer:
     free(buffer);
-    cleanup_none:
     return status;
 }

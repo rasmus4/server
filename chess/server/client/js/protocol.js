@@ -1,4 +1,4 @@
-const protocolVersion = 1;
+const protocolVersion = 4;
 
 const ProtocolClientOp = {
     // Chess
@@ -6,7 +6,9 @@ const ProtocolClientOp = {
     // Home
     CREATE: 1,
     JOIN: 2,
-    BACK: 3
+    BACK: 3,
+    SPECTATE: 4,
+    SCROLL: 5
 };
 
 const ProtocolServerOp = {
@@ -29,6 +31,7 @@ const ProtocolPieces = {
     ROOK: 4,
     QUEEN: 5,
     KING: 6,
-    PIECE_MASK: 0x7F,
-    WHITE_FLAG: 0x80
+    PIECE_MASK: 0x3F,
+    WHITE_FLAG: 0x80,
+    BLACK_FLAG: 0x40
 };

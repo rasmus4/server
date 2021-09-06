@@ -10,26 +10,34 @@ class Main {
         this.onCreate = () => {
             this.bufferDataView.setUint8(0, ProtocolClientOp.CREATE);
             this.socket.send(this.bufferByteView.subarray(0, 1));
-        }
+        };
         this.onJoin = (id) => {
             this.bufferDataView.setUint8(0, ProtocolClientOp.JOIN);
             this.bufferDataView.setInt32(1, id, true);
             this.socket.send(this.bufferByteView.subarray(0, 5));
         };
-        this.homeView = new HomeView(this.onCreate, this.onJoin);
+        this.onSpectate = (id) => {
+            this.bufferDataView.setUint8(0, ProtocolClientOp.SPECTATE);
+            this.bufferDataView.setInt32(1, id, true);
+            this.socket.send(this.bufferByteView.subarray(0, 5));
+        };
+        this.homeView = new HomeView(this.onCreate, this.onJoin, this.onSpectate);
         this.onMove = (from, to) => {
             this.bufferDataView.setUint8(0, ProtocolClientOp.MOVE);
-            this.bufferDataView.setUint8(1, from.x);
-            this.bufferDataView.setUint8(2, from.y);
-            this.bufferDataView.setUint8(3, to.x);
-            this.bufferDataView.setUint8(4, to.y);
-            this.socket.send(this.bufferByteView.subarray(0, 5));
-        }
+            this.bufferDataView.setUint8(1, from);
+            this.bufferDataView.setUint8(2, to);
+            this.socket.send(this.bufferByteView.subarray(0, 3));
+        };
         this.onBack = () => {
             this.bufferDataView.setUint8(0, ProtocolClientOp.BACK);
             this.socket.send(this.bufferByteView.subarray(0, 1));
-        }
-        this.chessView = new ChessView(this.onMove, this.onBack);
+        };
+        this.onScroll = (up) => {
+            this.bufferDataView.setUint8(0, ProtocolClientOp.SCROLL);
+            this.bufferDataView.setUint8(1, up ? 1 : 0);
+            this.socket.send(this.bufferByteView.subarray(0, 2));
+        };
+        this.chessView = new ChessView(this.onMove, this.onBack, this.onScroll);
         this.connectingView = new ConnectingView();
 
         this.roomView = new RoomView(this.onBack);
@@ -64,6 +72,7 @@ class Main {
                         this.setView(null);
                     } else {
                         // Perhaps the game updated, reload page.
+                        console.log("Reloading page...");
                         setTimeout(() => {
                             location.reload();
                         }, 1000);

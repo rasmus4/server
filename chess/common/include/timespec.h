@@ -1,8 +1,3 @@
-#pragma once
-
-#include <time.h>
-#include <inttypes.h>
-
 static inline int64_t timespec_toNanoseconds(struct timespec timespec) {
     return (int64_t)1000000000 * timespec.tv_sec + timespec.tv_nsec;
 }

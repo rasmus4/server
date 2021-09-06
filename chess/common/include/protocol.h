@@ -1,12 +1,12 @@
-#pragma once
-
-#define protocol_VERSION 1
+#define protocol_VERSION 4
 
 enum protocol_clientOp {
     protocol_MOVE = 0,
     protocol_CREATE = 1,
     protocol_JOIN = 2,
-    protocol_BACK = 3
+    protocol_BACK = 3,
+    protocol_SPECTATE = 4,
+    protocol_SCROLL = 5
 };
 
 enum protocol_serverOp {
@@ -29,6 +29,7 @@ enum protocol_pieces {
     protocol_ROOK = 4,
     protocol_QUEEN = 5,
     protocol_KING = 6,
-    protocol_PIECE_MASK = 0x7F,
-    protocol_WHITE_FLAG = 0x80
+    protocol_PIECE_MASK = 0x3F,
+    protocol_WHITE_FLAG = 0x80,
+    protocol_BLACK_FLAG = 0x40
 };

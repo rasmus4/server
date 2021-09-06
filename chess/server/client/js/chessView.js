@@ -1,7 +1,8 @@
 class ChessView {
-    constructor(onMove, onBack) {
+    constructor(onMove, onBack, onScroll) {
         this.onMove = onMove;
         this.onBack = onBack;
+        this.onScroll = onScroll;
 
         this.div = document.getElementById("chessView");
         this.canvas = document.getElementById("chessViewCanvas");
@@ -25,7 +26,7 @@ class ChessView {
     }
     open() {
         this.selectedTile = null;
-        this.onMousedown = (event) => {
+        this.onMouseDown = (event) => {
             if (event.button === 0) {
                 let tile = {
                     x: Math.trunc(event.offsetX / this.tileSize),
@@ -34,23 +35,32 @@ class ChessView {
                 if (this.selectedTile === null) {
                     this.selectedTile = tile;
                 } else {
-                    this.onMove(this.selectedTile, tile);
+                    let from = this.getBoardIndex(this.selectedTile.x, this.selectedTile.y);
+                    let to = this.getBoardIndex(tile.x, tile.y);
+                    this.onMove(from, to);
                     this.selectedTile = null;
                 }
                 this.draw();
             }
-        }
-        this.canvas.addEventListener("mousedown", this.onMousedown);
+        };
+        this.onScrollWheel = (event) => {
+            if (event.deltaY > 0) this.onScroll(false);
+            else if (event.deltaY < 0) this.onScroll(true);
+            return false;
+        };
+        this.canvas.addEventListener("mousedown", this.onMouseDown);
+        this.canvas.addEventListener("wheel", this.onScrollWheel);
 
         this.onBackClicked = (event) => {
             this.onBack();
-        }
+        };
         this.backButton.addEventListener("click", this.onBackClicked);
 
         this.div.classList.remove("hiddenView");
     }
     close() {
-        this.canvas.removeEventListener("mousedown", this.onMousedown);
+        this.canvas.removeEventListener("mousedown", this.onMouseDown);
+        this.canvas.removeEventListener("wheel", this.onScrollWheel);
         this.backButton.removeEventListener("click", this.onBackClicked);
 
         this.div.classList.add("hiddenView");
